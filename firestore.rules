@@ -1,0 +1,180 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'francinaldo.lima@ifma.edu.br' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Entity Validators
+    function isValidUser(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.nome is string && data.nome.size() > 0 && data.nome.size() <= 150 &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 150 &&
+        data.role in ['ADMIN', 'GESTOR_SETOR', 'RESPONSAVEL_ACAO', 'VALIDADOR', 'CONSULTA'] &&
+        data.ativo is bool;
+    }
+
+    function isValidSector(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.nome is string && data.nome.size() > 0 && data.nome.size() <= 150 &&
+        data.sigla is string && data.sigla.size() > 0 && data.sigla.size() <= 30 &&
+        data.ativo is bool;
+    }
+
+    function isValidAxis(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.nome is string && data.nome.size() > 0 && data.nome.size() <= 200 &&
+        data.ordem is number &&
+        data.ativo is bool;
+    }
+
+    function isValidPAA(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.ano is number &&
+        data.campus is string && data.campus.size() <= 100 &&
+        data.titulo is string && data.titulo.size() <= 200 &&
+        data.status in ['PLANEJAMENTO', 'ABERTO', 'PREENCHIMENTO', 'VALIDACAO', 'APROVADO', 'PUBLICADO', 'EM_EXECUCAO', 'ENCERRADO'];
+    }
+
+    function isValidAction(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.paa_id is string && data.paa_id.size() <= 128 &&
+        data.eixo_id is string && data.eixo_id.size() <= 128 &&
+        data.setor_id is string && data.setor_id.size() <= 128 &&
+        data.responsavel_id is string && data.responsavel_id.size() <= 128 &&
+        data.titulo is string && data.titulo.size() > 0 && data.titulo.size() <= 300 &&
+        data.status in ['RASCUNHO', 'ENVIADA', 'EM_ANALISE', 'DEVOLVIDA', 'APROVADA', 'CONSOLIDADA', 'PUBLICADA', 'EM_EXECUCAO', 'CONCLUIDA', 'CANCELADA'];
+    }
+
+    function isValidAuditLog(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.usuario_id is string && data.usuario_id.size() <= 128 &&
+        data.usuario_nome is string && data.usuario_nome.size() <= 150 &&
+        data.acao is string && data.acao.size() <= 100 &&
+        data.data is string && data.data.size() <= 64;
+    }
+
+    function isValidNotification(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.usuario_id is string && data.usuario_id.size() <= 128 &&
+        data.titulo is string && data.titulo.size() <= 200 &&
+        data.mensagem is string && data.mensagem.size() <= 1000 &&
+        data.tipo in ['INFO', 'SUCESSO', 'ALERTA', 'ERRO'] &&
+        data.lida is bool;
+    }
+
+    function isValidSettings(data) {
+      return data.id is string && isValidId(data.id) &&
+        data.campus_nome is string && data.campus_nome.size() <= 150 &&
+        data.ano_vigente is number;
+    }
+
+    // Admins collection for role checks
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Users
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isAdmin() && isValidId(userId) && isValidUser(incoming());
+      allow update: if isValidId(userId) && (
+        isAdmin() ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['nome', 'matricula_funcional']))
+      ) && isValidUser(incoming());
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    // Sectors
+    match /sectors/{sectorId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidId(sectorId) && isValidSector(incoming());
+      allow delete: if isAdmin() && isValidId(sectorId);
+    }
+
+    // Axes
+    match /axes/{axisId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidId(axisId) && isValidAxis(incoming());
+      allow delete: if isAdmin() && isValidId(axisId);
+    }
+
+    // PAAs
+    match /paas/{paaId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidId(paaId) && isValidPAA(incoming());
+      allow delete: if isAdmin() && isValidId(paaId);
+    }
+
+    // Actions
+    match /actions/{actionId} {
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(actionId) && isValidAction(incoming());
+      allow update: if isSignedIn() && isValidId(actionId) && isValidAction(incoming()) && (
+        isAdmin() ||
+        // State update when editing
+        incoming().responsavel_id == existing().responsavel_id ||
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updated_at', 'execucao', 'aprovacoes'])
+      );
+      allow delete: if isSignedIn() && isValidId(actionId) && (isAdmin() || existing().responsavel_id == request.auth.uid);
+    }
+
+    // Audit logs (append-only)
+    match /audit_logs/{logId} {
+      allow get, list: if isSignedIn() && (isAdmin() || resource.data.usuario_id == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(logId) && isValidAuditLog(incoming());
+      allow update, delete: if false; // strictly immutable
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (resource.data.usuario_id == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.usuario_id == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidId(notificationId) && isValidNotification(incoming());
+      allow update: if isSignedIn() && isValidId(notificationId) && (
+        isAdmin() ||
+        (resource.data.usuario_id == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['lida']))
+      );
+      allow delete: if isSignedIn() && isValidId(notificationId) && (resource.data.usuario_id == request.auth.uid || isAdmin());
+    }
+
+    // Institution Settings
+    match /institution_settings/{settingId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isAdmin() && isValidId(settingId) && isValidSettings(incoming());
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+  }
+}

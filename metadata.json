@@ -1,0 +1,6 @@
+{
+  "name": "PAA IFMA Campus Carolina",
+  "description": "Sistema de elaboração, validação, aprovação, consolidação, acompanhamento e avaliação do Plano de Ação Anual do IFMA Campus Carolina 2027.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

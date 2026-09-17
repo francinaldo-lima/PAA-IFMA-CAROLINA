@@ -1,0 +1,390 @@
+// Prisma schema for PAA IFMA Campus Carolina
+// Preparado para implantação com PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  GESTOR_SETOR
+  RESPONSAVEL_ACAO
+  VALIDADOR
+  CONSULTA
+}
+
+enum PAAStatus {
+  PLANEJAMENTO
+  ABERTO
+  PREENCHIMENTO
+  VALIDACAO
+  APROVADO
+  PUBLICADO
+  EM_EXECUCAO
+  ENCERRADO
+}
+
+enum ActionStatus {
+  RASCUNHO
+  ENVIADA
+  EM_ANALISE
+  DEVOLVIDA
+  APROVADA
+  CONSOLIDADA
+  PUBLICADA
+  EM_EXECUCAO
+  CONCLUIDA
+}
+
+enum Priority {
+  ALTA
+  MEDIA
+  BAIXA
+}
+
+enum IndicatorType {
+  NUMERICA
+  PERCENTUAL
+  QUALITATIVA
+}
+
+enum ExecutionStatus {
+  NAO_INICIADA
+  EM_ANDAMENTO
+  CONCLUIDA
+  ATRASADA
+  PARCIALMENTE_EXECUTADA
+  CANCELADA
+}
+
+model User {
+  id                  String       @id @default(uuid())
+  nome                String
+  email               String       @unique
+  senha               String?
+  matricula_funcional String?
+  role                Role         @default(GESTOR_SETOR)
+  sector_id           String?
+  setor               Sector?      @relation(fields: [sector_id], references: [id])
+  ativo               Boolean      @default(true)
+  created_at          DateTime     @default(now())
+  updated_at          DateTime     @updated_at
+  
+  // Relacionamentos
+  paas_gerenciados    PAA[]        @relation("PAAResponsavel")
+  setores_liderados   Sector[]     @relation("SetorResponsavel")
+  acoes_gerenciadas   Action[]     @relation("ActionResponsavel")
+  aprovacoes          Approval[]
+  notificacoes        Notification[]
+  logs_auditoria      AuditLog[]
+
+  @@map("users")
+}
+
+model Sector {
+  id             String    @id @default(uuid())
+  nome           String
+  sigla          String    @unique
+  descricao      String?
+  responsavel_id String?
+  responsavel    User?     @relation("SetorResponsavel", fields: [responsavel_id], references: [id])
+  email          String?
+  ativo          Boolean   @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updated_at
+
+  usuarios       User[]
+  acoes          Action[]
+
+  @@map("sectors")
+}
+
+model PAA {
+  id                  String        @id @default(uuid())
+  ano                 Int           @unique
+  campus              String        @default("IFMA Campus Carolina")
+  titulo              String
+  descricao           String?
+  status              PAAStatus     @default(PLANEJAMENTO)
+  data_inicio         DateTime
+  data_fim            DateTime
+  prazo_preenchimento DateTime
+  prazo_validacao     DateTime
+  responsavel_id      String?
+  responsavel         User?         @relation("PAAResponsavel", fields: [responsavel_id], references: [id])
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updated_at
+
+  eixos               Axis[]
+  acoes               Action[]
+
+  @@map("paas")
+}
+
+model Axis {
+  id          String    @id @default(uuid())
+  paa_id      String
+  paa         PAA       @relation(fields: [paa_id], references: [id], onDelete: Cascade)
+  nome        String
+  descricao   String?
+  ordem       Int       @default(0)
+  ativo       Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updated_at
+
+  acoes       Action[]
+
+  @@map("axes")
+}
+
+model Action {
+  id                  String           @id @default(uuid())
+  paa_id              String
+  paa                 PAA              @relation(fields: [paa_id], references: [id], onDelete: Cascade)
+  eixo_id             String
+  eixo                Axis             @relation(fields: [eixo_id], references: [id])
+  setor_id            String
+  setor               Sector           @relation(fields: [setor_id], references: [id])
+  responsavel_id      String?
+  responsavel         User?            @relation("ActionResponsavel", fields: [responsavel_id], references: [id])
+  
+  titulo              String
+  prioridade          Priority         @default(MEDIA)
+  
+  // Planejamento
+  objetivo            String
+  descricao           String
+  justificativa       String
+  publico_alvo        String
+  
+  // Status institucional
+  status              ActionStatus     @default(RASCUNHO)
+  possui_orcamento    Boolean          @default(false)
+  observacoes         String?
+  is_demo             Boolean          @default(false)
+  
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updated_at
+
+  // Sub-entidades
+  indicadores         Indicator[]
+  cronograma          ActionSchedule?
+  itens_orcamento     BudgetItem[]
+  execucao            ActionExecution?
+  anexos              Attachment[]
+  aprovacoes          Approval[]
+  historico           ActionHistory[]
+
+  @@map("actions")
+}
+
+model Indicator {
+  id             String        @id @default(uuid())
+  action_id      String
+  acao           Action        @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  nome           String
+  descricao      String?
+  unidade_medida String
+  tipo_meta      IndicatorType @default(NUMERICA)
+  linha_base     Float         @default(0)
+  meta           Float
+  resultado      Float         @default(0)
+  percentual     Float         @default(0)
+  resultado_esperado String?
+
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updated_at
+
+  @@map("indicators")
+}
+
+model ActionSchedule {
+  id             String    @id @default(uuid())
+  action_id      String    @unique
+  acao           Action    @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  data_inicio    DateTime?
+  data_fim       DateTime?
+  
+  // 12 meses
+  janeiro        Boolean   @default(false)
+  fevereiro      Boolean   @default(false)
+  marco          Boolean   @default(false)
+  abril          Boolean   @default(false)
+  maio           Boolean   @default(false)
+  junho          Boolean   @default(false)
+  julho          Boolean   @default(false)
+  agosto         Boolean   @default(false)
+  setembro       Boolean   @default(false)
+  outubro        Boolean   @default(false)
+  novembro       Boolean   @default(false)
+  dezembro       Boolean   @default(false)
+  
+  atividades_mes Json?     // { jan: "...", fev: "..." }
+  atividades_texto String?
+
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updated_at
+
+  @@map("action_schedules")
+}
+
+model BudgetItem {
+  id                String    @id @default(uuid())
+  action_id         String
+  acao              Action    @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  descricao         String
+  quantidade        Float     @default(1)
+  unidade           String    @default("Unidade")
+  valor_unitario    Float     @default(0)
+  valor_total       Float     @default(0)
+  tipo_despesa      String    // Custeio ou Investimento
+  fonte_recurso     String    // Ex: Tesouro, Recursos Próprios, Emenda
+  acao_orcamentaria String?   // Ex: 20RL
+  plano_interno     String?   // PI
+  natureza_despesa  String?   // Ex: 339030, 449052
+  observacao        String?
+
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updated_at
+
+  @@map("budget_items")
+}
+
+model ActionExecution {
+  id                   String          @id @default(uuid())
+  action_id            String          @unique
+  acao                 Action          @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  status_execucao      ExecutionStatus @default(NAO_INICIADA)
+  percentual_execucao  Float           @default(0)
+  meta_planejada       Float           @default(0)
+  meta_realizada       Float           @default(0)
+  valor_planejado      Float           @default(0)
+  valor_executado      Float           @default(0)
+  resultado            String?
+  justificativa        String?
+  data_atualizacao     DateTime        @updated_at
+
+  created_at           DateTime        @default(now())
+
+  @@map("action_executions")
+}
+
+model Attachment {
+  id             String    @id @default(uuid())
+  action_id      String
+  acao           Action    @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  nome           String
+  tipo           String
+  tamanho        Int
+  url            String?
+  dados_base64   String?
+  usuario_id     String?
+  created_at     DateTime  @default(now())
+
+  @@map("attachments")
+}
+
+model Approval {
+  id             String       @id @default(uuid())
+  action_id      String
+  acao           Action       @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  usuario_id     String
+  usuario        User         @relation(fields: [usuario_id], references: [id])
+  status_anterior ActionStatus
+  novo_status    ActionStatus
+  motivo         String?
+  data           DateTime     @default(now())
+
+  @@map("approvals")
+}
+
+model ActionHistory {
+  id          String    @id @default(uuid())
+  action_id   String
+  acao        Action    @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  descricao   String
+  usuario_id  String?
+  data        DateTime  @default(now())
+
+  @@map("action_histories")
+}
+
+model Notification {
+  id          String    @id @default(uuid())
+  usuario_id  String
+  usuario     User      @relation(fields: [usuario_id], references: [id])
+  titulo      String
+  mensagem    String
+  tipo        String    @default("INFO") // INFO, ALERTA, SUCESSO, AVISO
+  lida        Boolean   @default(false)
+  link        String?
+  created_at  DateTime  @default(now())
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String    @id @default(uuid())
+  user_id    String?
+  usuario    User?     @relation(fields: [user_id], references: [id])
+  action     String
+  entity     String
+  entity_id  String
+  old_value  Json?
+  new_value  Json?
+  ip         String?
+  created_at DateTime  @default(now())
+
+  @@map("audit_logs")
+}
+
+model ActionTemplate {
+  id          String    @id @default(uuid())
+  nome        String
+  eixo_sugerido String?
+  objetivo    String
+  descricao   String
+  indicadores Json?
+  orientacoes String?
+  ativo       Boolean   @default(true)
+  created_at  DateTime  @default(now())
+
+  @@map("action_templates")
+}
+
+model InstitutionSettings {
+  id                  String   @id @default("default")
+  nome_instituicao    String   @default("Instituto Federal do Maranhão")
+  nome_campus         String   @default("Campus Carolina")
+  endereco            String   @default("Carolina - MA")
+  telefone            String   @default("(99) 3531-0000")
+  email               String   @default("gabinete.carolina@ifma.edu.br")
+  site                String   @default("https://carolina.ifma.edu.br")
+  logo_url            String?
+  nome_diretor        String   @default("Diretor Geral do Campus Carolina")
+  cargo_diretor       String   @default("Diretor-Geral")
+  texto_apresentacao  String?
+  texto_introducao    String?
+  texto_metodologia   String?
+  rodape_documento    String   @default("IFMA Campus Carolina — Plano de Ação Anual 2027")
+  updated_at          DateTime @updated_at
+
+  @@map("institution_settings")
+}
+
+model DocumentConfiguration {
+  id                  String   @id @default("default")
+  titulo              String   @default("PLANO DE AÇÃO ANUAL")
+  subtitulo           String   @default("PAA 2027 — IFMA CAMPUS CAROLINA")
+  ordem_secoes        Json?
+  regras_campos       Json?    // Configuração de campos obrigatórios/opcionais/ocultos
+  assinaturas         Json?
+  updated_at          DateTime @updated_at
+
+  @@map("document_configurations")
+}

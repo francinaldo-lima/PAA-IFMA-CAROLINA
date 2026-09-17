@@ -1,0 +1,181 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Perfil de usuário institucional do IFMA Campus Carolina",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nome": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "maxLength": 150 },
+        "matricula_funcional": { "type": "string", "maxLength": 50 },
+        "role": { "type": "string", "enum": ["ADMIN", "GESTOR_SETOR", "RESPONSAVEL_ACAO", "VALIDADOR", "CONSULTA"] },
+        "sector_id": { "type": "string", "maxLength": 128 },
+        "ativo": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "nome", "email", "role", "ativo"]
+    },
+    "Sector": {
+      "title": "Sector",
+      "description": "Setores e departamentos do IFMA Campus Carolina",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "nome": { "type": "string", "maxLength": 150 },
+        "sigla": { "type": "string", "maxLength": 30 },
+        "descricao": { "type": "string", "maxLength": 500 },
+        "responsavel_id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 150 },
+        "ativo": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "nome", "sigla", "ativo"]
+    },
+    "Axis": {
+      "title": "Axis",
+      "description": "Eixos estratégicos do PAA alinhados ao PDI",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "paa_id": { "type": "string", "maxLength": 128 },
+        "nome": { "type": "string", "maxLength": 200 },
+        "descricao": { "type": "string", "maxLength": 1000 },
+        "ordem": { "type": "number" },
+        "ativo": { "type": "boolean" }
+      },
+      "required": ["id", "nome", "ordem", "ativo"]
+    },
+    "PAA": {
+      "title": "PAA",
+      "description": "Ciclo anual do Plano de Ação Anual",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "ano": { "type": "number" },
+        "campus": { "type": "string", "maxLength": 100 },
+        "titulo": { "type": "string", "maxLength": 200 },
+        "descricao": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["PLANEJAMENTO", "ABERTO", "PREENCHIMENTO", "VALIDACAO", "APROVADO", "PUBLICADO", "EM_EXECUCAO", "ENCERRADO"] },
+        "data_inicio": { "type": "string", "maxLength": 64 },
+        "data_fim": { "type": "string", "maxLength": 64 },
+        "prazo_preenchimento": { "type": "string", "maxLength": 64 },
+        "prazo_validacao": { "type": "string", "maxLength": 64 },
+        "responsavel_id": { "type": "string", "maxLength": 128 },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "ano", "campus", "titulo", "status"]
+    },
+    "Action": {
+      "title": "Action",
+      "description": "Ações planejadas e executadas do PAA 2027",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "paa_id": { "type": "string", "maxLength": 128 },
+        "eixo_id": { "type": "string", "maxLength": 128 },
+        "setor_id": { "type": "string", "maxLength": 128 },
+        "responsavel_id": { "type": "string", "maxLength": 128 },
+        "titulo": { "type": "string", "maxLength": 300 },
+        "prioridade": { "type": "string", "enum": ["ALTA", "MEDIA", "BAIXA"] },
+        "objetivo": { "type": "string", "maxLength": 2000 },
+        "descricao": { "type": "string", "maxLength": 4000 },
+        "justificativa": { "type": "string", "maxLength": 3000 },
+        "publico_alvo": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["RASCUNHO", "ENVIADA", "EM_ANALISE", "DEVOLVIDA", "APROVADA", "CONSOLIDADA", "PUBLICADA", "EM_EXECUCAO", "CONCLUIDA", "CANCELADA"] },
+        "possui_orcamento": { "type": "boolean" },
+        "is_demo": { "type": "boolean" },
+        "created_at": { "type": "string", "maxLength": 64 },
+        "updated_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "paa_id", "eixo_id", "setor_id", "responsavel_id", "titulo", "status"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Registros de trilha de auditoria e conformidade",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "usuario_id": { "type": "string", "maxLength": 128 },
+        "usuario_nome": { "type": "string", "maxLength": 150 },
+        "acao": { "type": "string", "maxLength": 100 },
+        "detalhes": { "type": "string", "maxLength": 2000 },
+        "entidade": { "type": "string", "maxLength": 100 },
+        "entidade_id": { "type": "string", "maxLength": 128 },
+        "data": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "usuario_id", "usuario_nome", "acao", "data"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Notificações internas de tramitação e alertas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "usuario_id": { "type": "string", "maxLength": 128 },
+        "titulo": { "type": "string", "maxLength": 200 },
+        "mensagem": { "type": "string", "maxLength": 1000 },
+        "tipo": { "type": "string", "enum": ["INFO", "SUCESSO", "ALERTA", "ERRO"] },
+        "lida": { "type": "boolean" },
+        "link": { "type": "string", "maxLength": 200 },
+        "created_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "usuario_id", "titulo", "mensagem", "tipo", "lida"]
+    },
+    "InstitutionSettings": {
+      "title": "InstitutionSettings",
+      "description": "Configurações institucionais do IFMA Campus Carolina",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "campus_nome": { "type": "string", "maxLength": 150 },
+        "campus_cidade": { "type": "string", "maxLength": 100 },
+        "diretor_geral": { "type": "string", "maxLength": 150 },
+        "diretor_ensino": { "type": "string", "maxLength": 150 },
+        "diretor_administracao": { "type": "string", "maxLength": 150 },
+        "email_institucional": { "type": "string", "maxLength": 150 },
+        "ano_vigente": { "type": "number" },
+        "pdi_vigente": { "type": "string", "maxLength": 100 },
+        "permitir_cadastro_fora_prazo": { "type": "boolean" },
+        "notificar_por_email": { "type": "boolean" },
+        "exigir_parecer_devolucao": { "type": "boolean" }
+      },
+      "required": ["id", "campus_nome", "ano_vigente"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Perfis dos servidores e gestores do campus"
+    },
+    "/sectors/{sectorId}": {
+      "schema": "Sector",
+      "description": "Estrutura organizacional de setores"
+    },
+    "/axes/{axisId}": {
+      "schema": "Axis",
+      "description": "Eixos estratégicos do planejamento"
+    },
+    "/paas/{paaId}": {
+      "schema": "PAA",
+      "description": "Planos de Ação Anual dos exercícios"
+    },
+    "/actions/{actionId}": {
+      "schema": "Action",
+      "description": "Ações e iniciativas detalhadas do PAA"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Trilha de auditoria das operações"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Notificações para os servidores"
+    },
+    "/institution_settings/{settingId}": {
+      "schema": "InstitutionSettings",
+      "description": "Parâmetros gerais de funcionamento do sistema"
+    }
+  }
+}
