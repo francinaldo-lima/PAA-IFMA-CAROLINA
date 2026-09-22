@@ -233,12 +233,62 @@ export interface DocumentConfiguration {
   assinaturas: Array<{ nome: string; cargo: string; papel: string }>;
 }
 
+export interface ManagementMember {
+  id: string;
+  nome: string;
+  cargo_funcao: string;
+  codigo_funcao?: string;
+  email: string;
+  matricula_siape?: string;
+  portaria_designacao?: string;
+  setor_id?: string;
+  ordem: number;
+  ativo: boolean;
+  created_at: string;
+}
+
+export interface FacultyMember {
+  id: string;
+  nome: string;
+  matricula_siape: string;
+  email: string;
+  titulacao: 'Graduado' | 'Especialista' | 'Mestre' | 'Doutor' | 'Pós-Doutor';
+  area_disciplina: string;
+  regime_trabalho: '20h' | '40h' | '40h DE' | 'Substituto';
+  setor_lotacao_id?: string;
+  e_chefia_setor: boolean;
+  funcao_chefia?: string;
+  codigo_funcao_chefia?: string;
+  setor_chefia_id?: string;
+  ativo: boolean;
+  created_at: string;
+}
+
+export interface StaffMember {
+  id: string;
+  nome: string;
+  matricula_siape: string;
+  email: string;
+  cargo_efetivo: string;
+  nivel_classificacao: 'C' | 'D' | 'E';
+  setor_lotacao_id?: string;
+  e_chefia_setor: boolean;
+  funcao_chefia?: string;
+  codigo_funcao_chefia?: string;
+  setor_chefia_id?: string;
+  ativo: boolean;
+  created_at: string;
+}
+
 export interface DatabaseSchema {
   paas: PAA[];
   sectors: Sector[];
   axes: Axis[];
   users: User[];
   actions: Action[];
+  managementTeam: ManagementMember[];
+  faculty: FacultyMember[];
+  staff: StaffMember[];
   auditLogs: AuditLog[];
   notifications: Notification[];
   templates: ActionTemplate[];
@@ -277,7 +327,85 @@ class DatabaseService {
     if (fs.existsSync(DB_FILE)) {
       try {
         const raw = fs.readFileSync(DB_FILE, 'utf-8');
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        let modified = false;
+
+        if (!parsed.managementTeam || parsed.managementTeam.length < 12) {
+          parsed.managementTeam = this.getDefaultManagementTeam();
+          modified = true;
+        }
+        if (!parsed.faculty || parsed.faculty.length < 18) {
+          parsed.faculty = this.getDefaultFaculty();
+          modified = true;
+        }
+        if (!parsed.staff || parsed.staff.length < 8) {
+          parsed.staff = this.getDefaultStaff();
+          modified = true;
+        }
+        if (parsed.settings) {
+          parsed.settings.nome_campus = 'Campus Avançado Carolina';
+          parsed.settings.nome_diretor = 'Fernando Silva Lima';
+          parsed.settings.cargo_diretor = 'Diretor Geral';
+          modified = true;
+        }
+
+        // Ensure Fernando and Francinaldo are in users as ADMIN
+        const fernando = parsed.users.find((u: any) => u.email.toLowerCase() === 'fernando.lima@ifma.edu.br');
+        if (!fernando) {
+          parsed.users.unshift({
+            id: 'usr-fernando',
+            nome: 'Fernando Lima',
+            email: 'fernando.lima@ifma.edu.br',
+            matricula_funcional: 'SIAPE 1982341',
+            role: 'ADMIN',
+            sector_id: 'sec-dg',
+            ativo: true,
+            created_at: new Date().toISOString()
+          });
+          modified = true;
+        }
+
+        const francinaldo = parsed.users.find((u: any) => u.email.toLowerCase() === 'francinaldo.lima@ifma.edu.br');
+        if (!francinaldo) {
+          parsed.users.unshift({
+            id: 'usr-francinaldo',
+            nome: 'Francinaldo Lima',
+            email: 'francinaldo.lima@ifma.edu.br',
+            matricula_funcional: 'SIAPE 2045129',
+            role: 'ADMIN',
+            sector_id: 'sec-dap',
+            ativo: true,
+            created_at: new Date().toISOString()
+          });
+          modified = true;
+        }
+
+        // Ensure PAA 2025 (model) is in paas
+        const paa2025 = parsed.paas.find((p: any) => p.ano === 2025);
+        if (!paa2025) {
+          parsed.paas.unshift({
+            id: 'paa-2025',
+            ano: 2025,
+            campus: 'IFMA Campus Carolina',
+            titulo: 'Plano de Ação Anual 2025 — Campus Carolina (Modelo de Referência)',
+            descricao: 'Modelo oficial de referência do PAA com consolidação de metas acadêmicas, quadro de pessoal docente/TAE e orçamento.',
+            status: 'PUBLICADO',
+            data_inicio: '2025-01-01',
+            data_fim: '2025-12-31',
+            prazo_preenchimento: '2024-11-30',
+            prazo_validacao: '2024-12-15',
+            responsavel_id: 'usr-fernando',
+            created_at: '2024-10-01T10:00:00.000Z',
+            updated_at: '2025-03-01T10:00:00.000Z'
+          });
+          modified = true;
+        }
+
+        this.data = parsed;
+        if (modified) {
+          this.save();
+        }
+        return parsed;
       } catch (e) {
         console.error('Falha ao ler arquivo do banco, reinicializando com seed:', e);
       }
@@ -286,6 +414,540 @@ class DatabaseService {
     this.data = initial;
     this.save();
     return initial;
+  }
+
+  public getDefaultManagementTeam(): ManagementMember[] {
+    return [
+      {
+        id: 'gest-1',
+        nome: 'Carlos César Teixeira',
+        cargo_funcao: 'Reitor do IFMA',
+        codigo_funcao: 'CD-01',
+        email: 'reitoria@ifma.edu.br',
+        matricula_siape: '1100001',
+        portaria_designacao: 'Decreto Presidencial / Posse MEC',
+        setor_id: 'sec-drg',
+        ordem: 1,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-2',
+        nome: 'Fernando Silva Lima',
+        cargo_funcao: 'Diretor Geral',
+        codigo_funcao: 'CD-02',
+        email: 'fernando.lima@ifma.edu.br',
+        matricula_siape: '1982341',
+        portaria_designacao: 'Portaria nº 142/2024 - GR/IFMA',
+        setor_id: 'sec-drg',
+        ordem: 2,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-3',
+        nome: 'Duana Ravena dos Santos Vieira',
+        cargo_funcao: 'Diretora de Desenvolvimento Educacional',
+        codigo_funcao: 'CD-03',
+        email: 'duana.vieira@ifma.edu.br',
+        matricula_siape: '1894452',
+        portaria_designacao: 'Portaria nº 148/2024 - GR/IFMA',
+        setor_id: 'sec-dde',
+        ordem: 3,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-4',
+        nome: 'Jannyelle de Souza Corrêa',
+        cargo_funcao: 'Chefe do Departamento de Administração e Serviços de Gabinete',
+        codigo_funcao: 'CD-04',
+        email: 'jannyelle.correa@ifma.edu.br',
+        matricula_siape: '2109843',
+        portaria_designacao: 'Portaria nº 155/2024 - GR/IFMA',
+        setor_id: 'sec-dag',
+        ordem: 4,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-5',
+        nome: 'Beatriz Guerra Kleinubing Rocha',
+        cargo_funcao: 'Chefe do Departamento de Ações Inclusivas (DAI)',
+        codigo_funcao: 'CD-04',
+        email: 'beatriz.rocha@ifma.edu.br',
+        matricula_siape: '2245190',
+        portaria_designacao: 'Portaria nº 160/2024 - GR/IFMA',
+        setor_id: 'sec-dai',
+        ordem: 5,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-6',
+        nome: 'Soniara Alves Maciel',
+        cargo_funcao: 'Chefe do Departamento de Ensino e Extensão',
+        codigo_funcao: 'CD-04',
+        email: 'soniara.maciel@ifma.edu.br',
+        matricula_siape: '2319084',
+        portaria_designacao: 'Portaria nº 164/2024 - GR/IFMA',
+        setor_id: 'sec-dee',
+        ordem: 6,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-7',
+        nome: 'Claudia Araújo Moreira',
+        cargo_funcao: 'Coordenadora do Curso Técnico em Agroecologia',
+        codigo_funcao: 'FUC-01',
+        email: 'claudia.moreira@ifma.edu.br',
+        matricula_siape: '2418902',
+        portaria_designacao: 'Portaria nº 171/2024 - GR/IFMA',
+        setor_id: 'sec-agro',
+        ordem: 7,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-8',
+        nome: 'Iberê Pereira Parente',
+        cargo_funcao: 'Coordenador do Curso Técnico em Agronegócio',
+        codigo_funcao: 'FUC-01',
+        email: 'ibere.parente@ifma.edu.br',
+        matricula_siape: '2456781',
+        portaria_designacao: 'Portaria nº 172/2024 - GR/IFMA',
+        setor_id: 'sec-agron',
+        ordem: 8,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-9',
+        nome: 'Leonardo Oliveira da Silva Coelho',
+        cargo_funcao: 'Coordenador do Curso Técnico em Guia de Turismo',
+        codigo_funcao: 'FUC-01',
+        email: 'leonardo.coelho@ifma.edu.br',
+        matricula_siape: '2498712',
+        portaria_designacao: 'Portaria nº 173/2024 - GR/IFMA',
+        setor_id: 'sec-tur',
+        ordem: 9,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-10',
+        nome: 'Priscilla Novaes Nogueira',
+        cargo_funcao: 'Coordenadora do Curso Técnico em Administração',
+        codigo_funcao: 'FUC-01',
+        email: 'priscilla.nogueira@ifma.edu.br',
+        matricula_siape: '2512349',
+        portaria_designacao: 'Portaria nº 174/2024 - GR/IFMA',
+        setor_id: 'sec-adm',
+        ordem: 10,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-11',
+        nome: 'Raquel da Silva Cordeiro',
+        cargo_funcao: 'Coordenadora da Pós-Graduação em Gestão e Desenvolvimento Regional na Amazônia e Curso Técnico em Comércio',
+        codigo_funcao: 'FUC-01',
+        email: 'raquel.cordeiro@ifma.edu.br',
+        matricula_siape: '2534567',
+        portaria_designacao: 'Portaria nº 175/2024 - GR/IFMA',
+        setor_id: 'sec-com',
+        ordem: 11,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'gest-12',
+        nome: 'Thamires Barroso Lima',
+        cargo_funcao: 'Coordenadora da Pós-Graduação em Gestão Ambiental de Municípios e Curso Técnico em Meio Ambiente',
+        codigo_funcao: 'FUC-01',
+        email: 'thamires.lima@ifma.edu.br',
+        matricula_siape: '2567890',
+        portaria_designacao: 'Portaria nº 176/2024 - GR/IFMA',
+        setor_id: 'sec-amb',
+        ordem: 12,
+        ativo: true,
+        created_at: new Date().toISOString()
+      }
+    ];
+  }
+
+  public getDefaultFaculty(): FacultyMember[] {
+    return [
+      {
+        id: 'doc-1',
+        nome: 'Dr. Fernando Silva Lima',
+        matricula_siape: '1982341',
+        email: 'fernando.lima@ifma.edu.br',
+        titulacao: 'Doutor',
+        area_disciplina: 'Administração e Gestão Pública',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-drg',
+        e_chefia_setor: true,
+        funcao_chefia: 'Diretor Geral',
+        codigo_funcao_chefia: 'CD-02',
+        setor_chefia_id: 'sec-drg',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-2',
+        nome: 'Dr. Gesivaldo dos Santos Silva',
+        matricula_siape: '2190823',
+        email: 'gesivaldo.silva@ifma.edu.br',
+        titulacao: 'Doutor',
+        area_disciplina: 'Ciências Humanas e Sociais',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-3',
+        nome: 'Dr. Iberê Pereira Parente',
+        matricula_siape: '2456781',
+        email: 'ibere.parente@ifma.edu.br',
+        titulacao: 'Doutor',
+        area_disciplina: 'Ciências Agrárias / Agronegócio',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-agron',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenador do Curso Técnico em Agronegócio',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-agron',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-4',
+        nome: 'Dra. Claudia Araújo Moreira',
+        matricula_siape: '2418902',
+        email: 'claudia.moreira@ifma.edu.br',
+        titulacao: 'Doutor',
+        area_disciplina: 'Agroecologia e Meio Ambiente',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-agro',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenadora do Curso Técnico em Agroecologia',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-agro',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-5',
+        nome: 'Dra. Raquel da Silva Cordeiro',
+        matricula_siape: '2534567',
+        email: 'raquel.cordeiro@ifma.edu.br',
+        titulacao: 'Doutor',
+        area_disciplina: 'Desenvolvimento Regional e Gestão',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-com',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenadora da Pós-Graduação em Gestão Regional e Curso Técnico em Comércio',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-com',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-6',
+        nome: 'Esp. Davi Ketley Sousa Moraes',
+        matricula_siape: '2601982',
+        email: 'davi.moraes@ifma.edu.br',
+        titulacao: 'Especialista',
+        area_disciplina: 'Educação Básica e Técnica',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-7',
+        nome: 'Esp. Jardeilson Luis Araujo Silva',
+        matricula_siape: '2610456',
+        email: 'jardeilson.silva@ifma.edu.br',
+        titulacao: 'Especialista',
+        area_disciplina: 'Informática Aplicada',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-8',
+        nome: 'Esp. Jose Dilson de Sousa Junior Cunha Moreira',
+        matricula_siape: '2623419',
+        email: 'jose.dilson@ifma.edu.br',
+        titulacao: 'Especialista',
+        area_disciplina: 'Linguagens e Códigos',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-9',
+        nome: 'Esp. Ueslei Bispo de Carvalho',
+        matricula_siape: '2634891',
+        email: 'ueslei.carvalho@ifma.edu.br',
+        titulacao: 'Especialista',
+        area_disciplina: 'Matemática e Ciências Exatas',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-10',
+        nome: 'Ma. Ana Lucia da Cunha',
+        matricula_siape: '2645123',
+        email: 'ana.cunha@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Pedagogia e Formação Docente',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-11',
+        nome: 'Ma. Ângela Cristina dos Santos Carvalho Minervino',
+        matricula_siape: '2656789',
+        email: 'angela.minervino@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Ciências Sociais e Humanidades',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-12',
+        nome: 'Ma. Duana Ravena dos Santos Vieira',
+        matricula_siape: '1894452',
+        email: 'duana.vieira@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Educação Profissional e Tecnológica',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: true,
+        funcao_chefia: 'Diretora de Desenvolvimento Educacional',
+        codigo_funcao_chefia: 'CD-03',
+        setor_chefia_id: 'sec-dde',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-13',
+        nome: 'Ma. Elizangela Divina Dias Batista',
+        matricula_siape: '2667890',
+        email: 'elizangela.batista@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Língua Portuguesa e Literatura',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-14',
+        nome: 'Ma. Thamires Barroso Lima',
+        matricula_siape: '2567890',
+        email: 'thamires.lima@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Gestão Ambiental e Ecologia',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-amb',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenadora da Pós-Graduação em Gestão Ambiental e Curso Técnico em Meio Ambiente',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-amb',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-15',
+        nome: 'Me. Fernando Bezerra Chagas',
+        matricula_siape: '2678901',
+        email: 'fernando.chagas@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Engenharia e Tecnologia',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-16',
+        nome: 'Me. Filipe dos Santos Alves',
+        matricula_siape: '2689012',
+        email: 'filipe.alves@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'História e Filosofia da Ciência',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-17',
+        nome: 'Me. Leonardo Oliveira da Silva Coelho',
+        matricula_siape: '2498712',
+        email: 'leonardo.coelho@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Turismo, Hospitalidade e Lazer',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-tur',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenador do Curso Técnico em Guia de Turismo',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-tur',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'doc-18',
+        nome: 'Me. Priscilla Novaes Nogueira Gomes',
+        matricula_siape: '2512349',
+        email: 'priscilla.nogueira@ifma.edu.br',
+        titulacao: 'Mestre',
+        area_disciplina: 'Administração Geral e Finanças',
+        regime_trabalho: '40h DE',
+        setor_lotacao_id: 'sec-adm',
+        e_chefia_setor: true,
+        funcao_chefia: 'Coordenadora do Curso Técnico em Administração',
+        codigo_funcao_chefia: 'FUC-01',
+        setor_chefia_id: 'sec-adm',
+        ativo: true,
+        created_at: new Date().toISOString()
+      }
+    ];
+  }
+
+  public getDefaultStaff(): StaffMember[] {
+    return [
+      {
+        id: 'tae-1',
+        nome: 'Beatriz Guerra Kleinubing Rocha',
+        matricula_siape: '2245190',
+        email: 'beatriz.rocha@ifma.edu.br',
+        cargo_efetivo: 'Assistente de Aluno',
+        nivel_classificacao: 'D',
+        setor_lotacao_id: 'sec-dai',
+        e_chefia_setor: true,
+        funcao_chefia: 'Chefe do Departamento de Ações Inclusivas (DAI)',
+        codigo_funcao_chefia: 'CD-04',
+        setor_chefia_id: 'sec-dai',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-2',
+        nome: 'Camila Sousa Ferreira',
+        matricula_siape: '2710123',
+        email: 'camila.ferreira@ifma.edu.br',
+        cargo_efetivo: 'Técnica em Assuntos Educacionais',
+        nivel_classificacao: 'E',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-3',
+        nome: 'Cleomária Da Silva Sousa',
+        matricula_siape: '2721234',
+        email: 'cleomaria.sousa@ifma.edu.br',
+        cargo_efetivo: 'Técnica em Assuntos Educacionais',
+        nivel_classificacao: 'E',
+        setor_lotacao_id: 'sec-dde',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-4',
+        nome: 'Diego Salustriano da Silva',
+        matricula_siape: '2732345',
+        email: 'diego.silva@ifma.edu.br',
+        cargo_efetivo: 'Técnico em Informática',
+        nivel_classificacao: 'D',
+        setor_lotacao_id: 'sec-dag',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-5',
+        nome: 'Emisvaldo Pereira da Silva',
+        matricula_siape: '2743456',
+        email: 'emisvaldo.silva@ifma.edu.br',
+        cargo_efetivo: 'Técnico em Tecnologia da Informação',
+        nivel_classificacao: 'D',
+        setor_lotacao_id: 'sec-dag',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-6',
+        nome: 'Jannyelle de Souza Correa',
+        matricula_siape: '2109843',
+        email: 'jannyelle.correa@ifma.edu.br',
+        cargo_efetivo: 'Auxiliar em Administração',
+        nivel_classificacao: 'C',
+        setor_lotacao_id: 'sec-dag',
+        e_chefia_setor: true,
+        funcao_chefia: 'Chefe do Departamento de Administração e Serviços de Gabinete',
+        codigo_funcao_chefia: 'CD-04',
+        setor_chefia_id: 'sec-dag',
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-7',
+        nome: 'Oscar Phafaell Silva Alves',
+        matricula_siape: '2754567',
+        email: 'oscar.alves@ifma.edu.br',
+        cargo_efetivo: 'Assistente em Administração',
+        nivel_classificacao: 'D',
+        setor_lotacao_id: 'sec-dag',
+        e_chefia_setor: false,
+        ativo: true,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: 'tae-8',
+        nome: 'Soniara Alves Maciel',
+        matricula_siape: '2319084',
+        email: 'soniara.maciel@ifma.edu.br',
+        cargo_efetivo: 'Auxiliar de Biblioteca',
+        nivel_classificacao: 'C',
+        setor_lotacao_id: 'sec-dee',
+        e_chefia_setor: true,
+        funcao_chefia: 'Chefe do Departamento de Ensino e Extensão',
+        codigo_funcao_chefia: 'CD-04',
+        setor_chefia_id: 'sec-dee',
+        ativo: true,
+        created_at: new Date().toISOString()
+      }
+    ];
   }
 
   private getSeedData(): DatabaseSchema {
@@ -932,7 +1594,10 @@ class DatabaseService {
       ],
       templates,
       settings: defaultSettings,
-      docConfig: defaultDocConfig
+      docConfig: defaultDocConfig,
+      managementTeam: this.getDefaultManagementTeam(),
+      faculty: this.getDefaultFaculty(),
+      staff: this.getDefaultStaff()
     };
   }
 
@@ -995,6 +1660,15 @@ class DatabaseService {
     this.addAuditLog('usr-admin', 'Administrador', 'ATUALIZAR_PAA', 'PAA', id, old, this.data.paas[idx]);
     this.save();
     return this.data.paas[idx];
+  }
+
+  public deletePAA(id: string): boolean {
+    const idx = this.data.paas.findIndex(p => p.id === id);
+    if (idx === -1) return false;
+    const deleted = this.data.paas.splice(idx, 1)[0];
+    this.addAuditLog('usr-admin', 'Administrador', 'EXCLUIR_PAA', 'PAA', id, deleted, null);
+    this.save();
+    return true;
   }
 
   // --- SETORS ---
@@ -1736,6 +2410,248 @@ class DatabaseService {
     this.data.docConfig = { ...this.data.docConfig, ...config };
     this.save();
     return this.data.docConfig;
+  }
+
+  // --- EQUIPE DE GESTÃO ---
+  public getManagementTeam(): ManagementMember[] {
+    return (this.data.managementTeam || []).sort((a, b) => a.ordem - b.ordem);
+  }
+
+  public createManagementMember(member: Partial<ManagementMember>): ManagementMember {
+    const newMember: ManagementMember = {
+      id: `gest-${Date.now()}`,
+      nome: member.nome || '',
+      cargo_funcao: member.cargo_funcao || '',
+      codigo_funcao: member.codigo_funcao || 'FG-01',
+      email: member.email || '',
+      matricula_siape: member.matricula_siape || '',
+      portaria_designacao: member.portaria_designacao || '',
+      setor_id: member.setor_id || '',
+      ordem: member.ordem || (this.data.managementTeam?.length || 0) + 1,
+      ativo: member.ativo !== false,
+      created_at: new Date().toISOString()
+    };
+    if (!this.data.managementTeam) this.data.managementTeam = [];
+    this.data.managementTeam.push(newMember);
+    this.addAuditLog('usr-admin', 'Administrador', 'CRIAR_MEMBRO_GESTAO', 'ManagementMember', newMember.id, null, newMember);
+    this.save();
+    return newMember;
+  }
+
+  public updateManagementMember(id: string, updates: Partial<ManagementMember>): ManagementMember | null {
+    if (!this.data.managementTeam) return null;
+    const idx = this.data.managementTeam.findIndex(m => m.id === id);
+    if (idx === -1) return null;
+    const old = { ...this.data.managementTeam[idx] };
+    this.data.managementTeam[idx] = { ...this.data.managementTeam[idx], ...updates };
+    this.addAuditLog('usr-admin', 'Administrador', 'ATUALIZAR_MEMBRO_GESTAO', 'ManagementMember', id, old, this.data.managementTeam[idx]);
+    this.save();
+    return this.data.managementTeam[idx];
+  }
+
+  public deleteManagementMember(id: string): boolean {
+    if (!this.data.managementTeam) return false;
+    const idx = this.data.managementTeam.findIndex(m => m.id === id);
+    if (idx === -1) return false;
+    this.data.managementTeam.splice(idx, 1);
+    this.save();
+    return true;
+  }
+
+  // --- CORPO DOCENTE ---
+  public getFaculty(): FacultyMember[] {
+    return this.data.faculty || [];
+  }
+
+  public createFacultyMember(faculty: Partial<FacultyMember>): FacultyMember {
+    const newDoc: FacultyMember = {
+      id: `doc-${Date.now()}`,
+      nome: faculty.nome || '',
+      matricula_siape: faculty.matricula_siape || '',
+      email: faculty.email || '',
+      titulacao: faculty.titulacao || 'Especialista',
+      area_disciplina: faculty.area_disciplina || '',
+      regime_trabalho: faculty.regime_trabalho || '40h DE',
+      setor_lotacao_id: faculty.setor_lotacao_id || 'sec-de',
+      e_chefia_setor: !!faculty.e_chefia_setor,
+      funcao_chefia: faculty.funcao_chefia || '',
+      codigo_funcao_chefia: faculty.codigo_funcao_chefia || '',
+      setor_chefia_id: faculty.setor_chefia_id || '',
+      ativo: faculty.ativo !== false,
+      created_at: new Date().toISOString()
+    };
+    if (!this.data.faculty) this.data.faculty = [];
+    this.data.faculty.push(newDoc);
+    this.addAuditLog('usr-admin', 'Administrador', 'CRIAR_DOCENTE', 'FacultyMember', newDoc.id, null, newDoc);
+    this.save();
+    return newDoc;
+  }
+
+  public updateFacultyMember(id: string, updates: Partial<FacultyMember>): FacultyMember | null {
+    if (!this.data.faculty) return null;
+    const idx = this.data.faculty.findIndex(m => m.id === id);
+    if (idx === -1) return null;
+    const old = { ...this.data.faculty[idx] };
+    this.data.faculty[idx] = { ...this.data.faculty[idx], ...updates };
+    this.addAuditLog('usr-admin', 'Administrador', 'ATUALIZAR_DOCENTE', 'FacultyMember', id, old, this.data.faculty[idx]);
+    this.save();
+    return this.data.faculty[idx];
+  }
+
+  public deleteFacultyMember(id: string): boolean {
+    if (!this.data.faculty) return false;
+    const idx = this.data.faculty.findIndex(m => m.id === id);
+    if (idx === -1) return false;
+    this.data.faculty.splice(idx, 1);
+    this.save();
+    return true;
+  }
+
+  // --- TÉCNICOS ADMINISTRATIVOS (TAEs) ---
+  public getStaff(): StaffMember[] {
+    return this.data.staff || [];
+  }
+
+  public createStaffMember(staff: Partial<StaffMember>): StaffMember {
+    const newStaff: StaffMember = {
+      id: `tae-${Date.now()}`,
+      nome: staff.nome || '',
+      matricula_siape: staff.matricula_siape || '',
+      email: staff.email || '',
+      cargo_efetivo: staff.cargo_efetivo || '',
+      nivel_classificacao: staff.nivel_classificacao || 'D',
+      setor_lotacao_id: staff.setor_lotacao_id || 'sec-dap',
+      e_chefia_setor: !!staff.e_chefia_setor,
+      funcao_chefia: staff.funcao_chefia || '',
+      codigo_funcao_chefia: staff.codigo_funcao_chefia || '',
+      setor_chefia_id: staff.setor_chefia_id || '',
+      ativo: staff.ativo !== false,
+      created_at: new Date().toISOString()
+    };
+    if (!this.data.staff) this.data.staff = [];
+    this.data.staff.push(newStaff);
+    this.addAuditLog('usr-admin', 'Administrador', 'CRIAR_TAE', 'StaffMember', newStaff.id, null, newStaff);
+    this.save();
+    return newStaff;
+  }
+
+  public updateStaffMember(id: string, updates: Partial<StaffMember>): StaffMember | null {
+    if (!this.data.staff) return null;
+    const idx = this.data.staff.findIndex(m => m.id === id);
+    if (idx === -1) return null;
+    const old = { ...this.data.staff[idx] };
+    this.data.staff[idx] = { ...this.data.staff[idx], ...updates };
+    this.addAuditLog('usr-admin', 'Administrador', 'ATUALIZAR_TAE', 'StaffMember', id, old, this.data.staff[idx]);
+    this.save();
+    return this.data.staff[idx];
+  }
+
+  public deleteStaffMember(id: string): boolean {
+    if (!this.data.staff) return false;
+    const idx = this.data.staff.findIndex(m => m.id === id);
+    if (idx === -1) return false;
+    this.data.staff.splice(idx, 1);
+    this.save();
+    return true;
+  }
+
+  // --- ACESSO E VALIDAÇÃO DE CHEFIAS DE SETOR E ADMINS ---
+  public checkAccess(rawEmail: string) {
+    const email = (rawEmail || '').trim().toLowerCase();
+
+    // 1. Administradores Institucionais do Sistema
+    const adminEmails = ['fernando.lima@ifma.edu.br', 'francinaldo.lima@ifma.edu.br'];
+    const isAdmin = adminEmails.includes(email);
+
+    if (isAdmin) {
+      let user = this.data.users.find(u => u.email.toLowerCase() === email);
+      if (!user) {
+        user = {
+          id: email.includes('fernando') ? 'usr-fernando' : 'usr-francinaldo',
+          nome: email.includes('fernando') ? 'Fernando Lima' : 'Francinaldo Lima',
+          email,
+          role: 'ADMIN',
+          ativo: true,
+          created_at: new Date().toISOString()
+        };
+      }
+      return {
+        allowed: true,
+        isAdmin: true,
+        isChefia: true,
+        role: 'ADMIN',
+        user,
+        message: 'Acesso autorizado como Administrador do Sistema.'
+      };
+    }
+
+    // 2. Verificar se o servidor atua em Chefia de Setor
+    // Procura na Equipe de Gestão ativa
+    const gestao = (this.data.managementTeam || []).find(
+      m => m.ativo && m.email.toLowerCase() === email
+    );
+
+    // Procura no Corpo Docente com chefia de setor
+    const docenteChefia = (this.data.faculty || []).find(
+      d => d.ativo && d.e_chefia_setor && d.email.toLowerCase() === email
+    );
+
+    // Procura no Corpo Técnico com chefia de setor
+    const taeChefia = (this.data.staff || []).find(
+      t => t.ativo && t.e_chefia_setor && t.email.toLowerCase() === email
+    );
+
+    // Procura nos Setores (responsavel ou email institucional do setor)
+    const setorVinculado = this.data.sectors.find(
+      s => s.ativo && (
+        (s.email && s.email.toLowerCase() === email) ||
+        (s.responsavel_id && this.data.users.find(u => u.id === s.responsavel_id)?.email.toLowerCase() === email)
+      )
+    );
+
+    if (gestao || docenteChefia || taeChefia || setorVinculado) {
+      const chefiaNome = gestao?.nome || docenteChefia?.nome || taeChefia?.nome || setorVinculado?.nome || 'Servidor(a) Chefe de Setor';
+      const funcao = gestao?.cargo_funcao || docenteChefia?.funcao_chefia || taeChefia?.funcao_chefia || `Chefia do Setor ${setorVinculado?.sigla || ''}`;
+      const sectorId = gestao?.setor_id || docenteChefia?.setor_chefia_id || docenteChefia?.setor_lotacao_id || taeChefia?.setor_chefia_id || taeChefia?.setor_lotacao_id || setorVinculado?.id || 'sec-de';
+      const sectorObj = this.data.sectors.find(s => s.id === sectorId);
+
+      let existingUser = this.data.users.find(u => u.email.toLowerCase() === email);
+      if (!existingUser) {
+        existingUser = {
+          id: `usr-${Date.now()}`,
+          nome: chefiaNome,
+          email,
+          role: 'GESTOR_SETOR',
+          sector_id: sectorId,
+          ativo: true,
+          created_at: new Date().toISOString()
+        };
+        this.data.users.push(existingUser);
+        this.save();
+      }
+
+      return {
+        allowed: true,
+        isAdmin: false,
+        isChefia: true,
+        role: 'GESTOR_SETOR',
+        user: existingUser,
+        chefiaNome,
+        funcao,
+        sectorId,
+        sectorName: sectorObj?.nome || 'Setor do Campus',
+        sectorSigla: sectorObj?.sigla || 'SETOR',
+        message: 'Acesso autorizado para Chefia de Setor. Redirecionando para Cadastro de Ação...'
+      };
+    }
+
+    // Não é admin e não é chefia
+    return {
+      allowed: false,
+      isAdmin: false,
+      isChefia: false,
+      message: 'Acesso restrito: O e-mail informado foi validado, mas não consta como Chefia de Setor nem Administrador do Sistema. Apenas servidores designados nas chefias de setores possuem permissão para cadastrar ações.'
+    };
   }
 
   // --- DASHBOARD METRICS ---

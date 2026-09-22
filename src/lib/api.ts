@@ -9,7 +9,10 @@ import {
   ActionTemplate,
   InstitutionSettings,
   DocumentConfiguration,
-  DashboardStats
+  DashboardStats,
+  ManagementMember,
+  FacultyMember,
+  StaffMember
 } from '../types';
 
 let currentUserId: string = localStorage.getItem('paa_user_id') || 'usr-admin';
@@ -86,6 +89,31 @@ export const api = {
     return request<PAA>(`/api/paa/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data)
+    });
+  },
+
+  async deletePAA(id: string): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/api/paa/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  async checkAccess(email: string): Promise<{
+    allowed: boolean;
+    isAdmin: boolean;
+    isChefia: boolean;
+    role?: string;
+    user?: User;
+    chefiaNome?: string;
+    funcao?: string;
+    sectorId?: string;
+    sectorName?: string;
+    sectorSigla?: string;
+    message?: string;
+  }> {
+    return request('/api/auth/check-access', {
+      method: 'POST',
+      body: JSON.stringify({ email })
     });
   },
 
@@ -323,6 +351,81 @@ export const api = {
     return request<DocumentConfiguration>('/api/doc-config', {
       method: 'PUT',
       body: JSON.stringify(data)
+    });
+  },
+
+  // Equipe de Gestão
+  async getManagementTeam(): Promise<ManagementMember[]> {
+    return request<ManagementMember[]>('/api/management');
+  },
+
+  async createManagementMember(data: Partial<ManagementMember>): Promise<ManagementMember> {
+    return request<ManagementMember>('/api/management', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateManagementMember(id: string, data: Partial<ManagementMember>): Promise<ManagementMember> {
+    return request<ManagementMember>(`/api/management/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteManagementMember(id: string): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/api/management/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Corpo Docente
+  async getFaculty(): Promise<FacultyMember[]> {
+    return request<FacultyMember[]>('/api/faculty');
+  },
+
+  async createFacultyMember(data: Partial<FacultyMember>): Promise<FacultyMember> {
+    return request<FacultyMember>('/api/faculty', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateFacultyMember(id: string, data: Partial<FacultyMember>): Promise<FacultyMember> {
+    return request<FacultyMember>(`/api/faculty/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteFacultyMember(id: string): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/api/faculty/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Técnicos Administrativos (TAEs)
+  async getStaff(): Promise<StaffMember[]> {
+    return request<StaffMember[]>('/api/staff');
+  },
+
+  async createStaffMember(data: Partial<StaffMember>): Promise<StaffMember> {
+    return request<StaffMember>('/api/staff', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async updateStaffMember(id: string, data: Partial<StaffMember>): Promise<StaffMember> {
+    return request<StaffMember>(`/api/staff/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+
+  async deleteStaffMember(id: string): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>(`/api/staff/${id}`, {
+      method: 'DELETE'
     });
   },
 

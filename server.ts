@@ -80,6 +80,96 @@ app.put('/api/paa/:id', (req, res) => {
   res.json(updated);
 });
 
+app.delete('/api/paa/:id', (req, res) => {
+  const ok = dbService.deletePAA(req.params.id);
+  res.json({ success: ok });
+});
+
+// Access checking for Institutional Chefias and Admins
+app.post('/api/auth/check-access', (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ allowed: false, message: 'E-mail é obrigatório para validação.' });
+  }
+  const result = dbService.checkAccess(email);
+  res.json(result);
+});
+
+// Equipe de Gestão
+app.get('/api/management', (req, res) => {
+  res.json(dbService.getManagementTeam());
+});
+
+app.post('/api/management', (req, res) => {
+  try {
+    const member = dbService.createManagementMember(req.body);
+    res.status(201).json(member);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Erro ao cadastrar membro da gestão.' });
+  }
+});
+
+app.put('/api/management/:id', (req, res) => {
+  const updated = dbService.updateManagementMember(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: 'Membro da gestão não encontrado.' });
+  res.json(updated);
+});
+
+app.delete('/api/management/:id', (req, res) => {
+  const ok = dbService.deleteManagementMember(req.params.id);
+  res.json({ success: ok });
+});
+
+// Corpo Docente
+app.get('/api/faculty', (req, res) => {
+  res.json(dbService.getFaculty());
+});
+
+app.post('/api/faculty', (req, res) => {
+  try {
+    const doc = dbService.createFacultyMember(req.body);
+    res.status(201).json(doc);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Erro ao cadastrar docente.' });
+  }
+});
+
+app.put('/api/faculty/:id', (req, res) => {
+  const updated = dbService.updateFacultyMember(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: 'Docente não encontrado.' });
+  res.json(updated);
+});
+
+app.delete('/api/faculty/:id', (req, res) => {
+  const ok = dbService.deleteFacultyMember(req.params.id);
+  res.json({ success: ok });
+});
+
+// Técnicos Administrativos (TAEs)
+app.get('/api/staff', (req, res) => {
+  res.json(dbService.getStaff());
+});
+
+app.post('/api/staff', (req, res) => {
+  try {
+    const staff = dbService.createStaffMember(req.body);
+    res.status(201).json(staff);
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || 'Erro ao cadastrar técnico administrativo.' });
+  }
+});
+
+app.put('/api/staff/:id', (req, res) => {
+  const updated = dbService.updateStaffMember(req.params.id, req.body);
+  if (!updated) return res.status(404).json({ error: 'Técnico administrativo não encontrado.' });
+  res.json(updated);
+});
+
+app.delete('/api/staff/:id', (req, res) => {
+  const ok = dbService.deleteStaffMember(req.params.id);
+  res.json({ success: ok });
+});
+
 // Sectors
 app.get('/api/sectors', (req, res) => {
   res.json(dbService.getSectors());

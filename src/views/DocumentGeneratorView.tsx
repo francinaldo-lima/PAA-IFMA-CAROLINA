@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { FileText, Download, CheckCircle2, Printer, Settings2, ShieldCheck, ExternalLink } from 'lucide-react';
-import { Action, Axis, InstitutionSettings, PAA, Sector } from '../types';
+import React, { useState, useEffect } from 'react';
+import { FileText, Download, Printer, Settings2, Users, GraduationCap, Briefcase, CheckCircle2 } from 'lucide-react';
+import { Action, Axis, FacultyMember, InstitutionSettings, ManagementMember, PAA, Sector, StaffMember } from '../types';
 import { generatePAAPDF } from '../lib/pdf-generator';
+import { api } from '../lib/api';
 
 interface DocumentGeneratorViewProps {
   paa: PAA | null;
@@ -25,12 +26,37 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
   const [metodologia, setMetodologia] = useState(settings?.texto_metodologia || '');
   const [salvando, setSalvando] = useState(false);
 
-  React.useEffect(() => {
+  const [managementTeam, setManagementTeam] = useState<ManagementMember[]>([]);
+  const [faculty, setFaculty] = useState<FacultyMember[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [loadingPersonnel, setLoadingPersonnel] = useState(true);
+
+  useEffect(() => {
     if (settings) {
       setApresentacao(settings.texto_apresentacao || '');
       setMetodologia(settings.texto_metodologia || '');
     }
   }, [settings]);
+
+  useEffect(() => {
+    const loadPersonnel = async () => {
+      try {
+        const [gest, doc, tae] = await Promise.all([
+          api.getManagementTeam(),
+          api.getFaculty(),
+          api.getStaff()
+        ]);
+        setManagementTeam(gest);
+        setFaculty(doc);
+        setStaff(tae);
+      } catch (err) {
+        console.error('Erro ao carregar servidores para o documento:', err);
+      } finally {
+        setLoadingPersonnel(false);
+      }
+    };
+    loadPersonnel();
+  }, []);
 
   if (!paa || !settings) {
     return <div className="p-8 text-center text-slate-500">Carregando gerador de documentos...</div>;
@@ -43,11 +69,20 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
   const handleDownloadPDF = () => {
     setIsGenerating(true);
     try {
-      generatePAAPDF(paa, actions, axes, sectors, {
-        ...settings,
-        texto_apresentacao: apresentacao,
-        texto_metodologia: metodologia
-      });
+      generatePAAPDF(
+        paa,
+        actions,
+        axes,
+        sectors,
+        {
+          ...settings,
+          texto_apresentacao: apresentacao,
+          texto_metodologia: metodologia
+        },
+        managementTeam,
+        faculty,
+        staff
+      );
     } catch (e: any) {
       alert('Erro ao gerar PDF: ' + (e.message || ''));
     } finally {
@@ -88,7 +123,7 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-500">
-            Exportação do documento formal completo em PDF padrão A4 e planilha analítica em XLSX.
+            Exportação do documento formal completo em conformidade com o modelo oficial do IFMA Campus Avançado Carolina.
           </p>
         </div>
 
@@ -98,7 +133,7 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
             className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg border border-slate-300 transition-colors"
           >
             <Download className="w-4 h-4 text-emerald-700" />
-            <span>Exportar XLSX (Excel)</span>
+            <span>Exportar XLSX</span>
           </button>
 
           <button
@@ -112,25 +147,59 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
         </div>
       </div>
 
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Equipe de Gestão</p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">{managementTeam.length} membros</p>
+          </div>
+          <span className="p-2.5 rounded-lg bg-emerald-50 text-emerald-700">
+            <Users className="w-5 h-5" />
+          </span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Corpo Docente</p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">{faculty.length} docentes</p>
+          </div>
+          <span className="p-2.5 rounded-lg bg-sky-50 text-sky-700">
+            <GraduationCap className="w-5 h-5" />
+          </span>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Técnicos Administrativos</p>
+            <p className="text-xl font-bold text-slate-800 mt-0.5">{staff.length} servidores</p>
+          </div>
+          <span className="p-2.5 rounded-lg bg-amber-50 text-amber-700">
+            <Briefcase className="w-5 h-5" />
+          </span>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Document Structure Preview */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
             <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Estrutura Formal do Documento (Normas IFMA)
+              Estrutura Formal do Documento (Conforme Modelo PAA)
             </h3>
 
             <div className="space-y-3 text-xs">
               {[
-                { num: '01', title: 'Capa Oficial e Folha de Rosto', desc: 'Brasão institucional, identificação do Campus Carolina, título e exercício 2027.' },
-                { num: '02', title: 'Identificação Institucional & Contatos', desc: 'Dados formais da unidade, endereço, telefones, canais oficiais e direção.' },
-                { num: '03', title: 'Apresentação Institucional', desc: 'Mensagem e diretrizes estratégicas da Direção-Geral para o exercício.' },
-                { num: '04', title: 'Metodologia de Elaboração e Participação', desc: 'Critérios de participação dos setores, alinhamento ao PDI e diretrizes do MEC.' },
-                { num: '05', title: 'Eixos Temáticos Estratégicos', desc: 'Quadro síntese dos eixos de atuação e metas globais.' },
-                { num: '06', title: `Matriz Detalhada de Ações (${approvedActions.length} ações)`, desc: 'Tabela oficial contendo título, setor, prioridade, objetivos, metas e indicadores.' },
-                { num: '07', title: 'Demonstrativo Orçamentário Consolidado', desc: 'Quadro de despesas de custeio, investimentos e fontes de recursos.' },
-                { num: '08', title: 'Cronograma Físico de Execução', desc: 'Matriz visual de distribuição dos 12 meses do exercício.' },
-                { num: '09', title: 'Homologação e Bloco de Assinaturas', desc: 'Assinatura formal do Diretor-Geral, Diretor de Administração e Diretor de Ensino.' }
+                { num: '01', title: 'Capa Oficial e Folha de Rosto', desc: 'Identificação oficial do Ministério da Educação, SETEC, IFMA e Campus Avançado Carolina.' },
+                { num: '02', title: `Equipe de Gestão (${managementTeam.length} membros)`, desc: 'Reitor, Diretor-Geral, Diretorias, Departamentos e Coordenações de Curso com SIAPE e portarias.' },
+                { num: '03', title: `Corpo Docente (${faculty.length} professores)`, desc: 'Professores com titulação (Doutor, Mestre, Especialista), áreas de atuação e funções de chefia vinculadas.' },
+                { num: '04', title: `Técnicos Administrativos (${staff.length} TAEs)`, desc: 'Cargos efetivos, níveis de classificação (C, D, E), lotações e chefias de setor designadas.' },
+                { num: '05', title: 'Sumário Oficial', desc: 'Estruturação paginada do documento oficial com seções e eixos temáticos.' },
+                { num: '06', title: 'Apresentação Institucional', desc: 'Diretrizes da Direção-Geral e objetivos de desenvolvimento acadêmico e regional.' },
+                { num: '07', title: 'Introdução, Objetivo Geral e Metodologia', desc: 'Quadro 1 (Missão, Visão e Valores) e Quadro 2 (Indicadores de Desempenho e Metas TCU/PDI).' },
+                { num: '08', title: `Plano de Ações por Eixo Temático (${approvedActions.length} ações consolidadas)`, desc: 'Matrizes dos eixos Ensino (DDE), Pesquisa (CPPI), Extensão (DEE) e Administração Geral (DRG).' },
+                { num: '09', title: 'Resumo Orçamentário e Financeiro', desc: 'Quadro de despesas de custeio e capital, detalhadas por Fonte 20RL e Fonte 2994.' },
+                { num: '10', title: 'Monitoramento, Encerramento e Assinaturas', desc: 'Rotina de acompanhamento trimestral e bloco de homologação das chefias institucionais.' }
               ].map(sec => (
                 <div key={sec.num} className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-start gap-3">
                   <span className="w-7 h-7 rounded-md bg-emerald-100 text-emerald-800 font-bold font-mono text-xs flex items-center justify-center shrink-0">
@@ -156,33 +225,43 @@ export const DocumentGeneratorView: React.FC<DocumentGeneratorViewProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                Texto de Apresentação (Direção)
+                Texto de Apresentação (Direção-Geral)
               </label>
               <textarea
                 value={apresentacao}
                 onChange={e => setApresentacao(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-md min-h-[120px]"
+                className="w-full text-xs p-2.5 border border-slate-300 rounded-md min-h-[120px] focus:outline-emerald-600"
               />
             </div>
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">
-                Texto de Metodologia
+                Texto de Metodologia e Objetivos
               </label>
               <textarea
                 value={metodologia}
                 onChange={e => setMetodologia(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-300 rounded-md min-h-[120px]"
+                className="w-full text-xs p-2.5 border border-slate-300 rounded-md min-h-[120px] focus:outline-emerald-600"
               />
             </div>
 
             <button
               onClick={handleSaveTexts}
               disabled={salvando}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors"
+              className="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-lg transition-colors shadow-xs"
             >
               {salvando ? 'Salvando...' : 'Salvar Textos no Sistema'}
             </button>
+          </div>
+
+          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-xs text-emerald-900">
+            <div className="flex items-center gap-2 font-bold mb-1">
+              <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+              <span>Conformidade PAA</span>
+            </div>
+            <p className="text-[11px] text-emerald-800">
+              O documento compilado integra automaticamente os dados cadastrados nos módulos: <strong>Ano do Exercício</strong>, <strong>Equipe de Gestão</strong>, <strong>Corpo Docente</strong> e <strong>Técnicos Administrativos</strong> com a marcação das chefias de setor.
+            </p>
           </div>
         </div>
       </div>

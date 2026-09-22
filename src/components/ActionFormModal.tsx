@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Sparkles,
   Save,
   Send,
   Plus,
@@ -11,11 +10,9 @@ import {
   Target,
   FileText,
   CheckCircle2,
-  AlertCircle,
-  Wand2
+  AlertCircle
 } from 'lucide-react';
 import { Action, Axis, Sector, User } from '../types';
-import { AISuggestModal, AIAnalyzeModal } from './ActionModalAI';
 import { api } from '../lib/api';
 
 interface ActionFormModalProps {
@@ -40,10 +37,7 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
   currentPaaId
 }) => {
   const [activeTab, setActiveTab] = useState<'identificacao' | 'planejamento' | 'indicadores' | 'cronograma' | 'orcamento' | 'observacoes'>('identificacao');
-  const [showSuggestAI, setShowSuggestAI] = useState(false);
-  const [showAnalyzeAI, setShowAnalyzeAI] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [improvingField, setImprovingField] = useState<string | null>(null);
 
   // Form State
   const [eixoId, setEixoId] = useState('');
@@ -152,52 +146,6 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
   }, [initialData, axes, sectors, users, isOpen]);
 
   if (!isOpen) return null;
-
-  const handleApplyAISuggestion = (sug: any) => {
-    if (sug.title) setTitulo(sug.title);
-    if (sug.objective) setObjetivo(sug.objective);
-    if (sug.description) setDescricao(sug.description);
-    if (sug.justification) setJustificativa(sug.justification);
-    if (sug.suggested_priority) setPrioridade(sug.suggested_priority);
-
-    // Set indicator
-    if (sug.indicator) {
-      setIndicadores([
-        {
-          id: 'ind-sug-1',
-          nome: sug.indicator,
-          unidade_medida: sug.measurement_unit || '%',
-          tipo_meta: sug.measurement_unit === '%' ? 'PERCENTUAL' : 'NUMERICA',
-          linha_base: sug.baseline || 0,
-          meta: sug.target || 100,
-          resultado: 0,
-          percentual: 0,
-          resultado_esperado: sug.expected_result || ''
-        }
-      ]);
-    }
-
-    // Match axis by name
-    if (sug.suggested_axis) {
-      const match = axes.find(a => a.nome.toLowerCase().includes(sug.suggested_axis.toLowerCase().slice(0, 8)));
-      if (match) setEixoId(match.id);
-    }
-  };
-
-  const handleImproveText = async (fieldName: string, text: string, setter: (v: string) => void) => {
-    if (!text.trim()) return;
-    setImprovingField(fieldName);
-    try {
-      const res = await api.improveText(text, fieldName);
-      if (res.improvedText) {
-        setter(res.improvedText);
-      }
-    } catch (e: any) {
-      alert(e.message || 'Erro ao aprimorar texto.');
-    } finally {
-      setImprovingField(null);
-    }
-  };
 
   const handleAddIndicator = () => {
     setIndicadores(prev => [
@@ -333,25 +281,7 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowSuggestAI(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-emerald-100 text-xs font-semibold rounded-md border border-emerald-500 shadow-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-200" />
-              <span>Sugerir com IA</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowAnalyzeAI(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-200 text-xs font-semibold rounded-md border border-emerald-700 shadow-xs"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>Analisar Ação</span>
-            </button>
-
-            <button onClick={onClose} className="p-1.5 text-emerald-200 hover:text-white ml-2">
+            <button onClick={onClose} className="p-1.5 text-emerald-200 hover:text-white rounded-md hover:bg-emerald-800 transition-colors">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -458,20 +388,9 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    Título da Ação *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleImproveText('Título', titulo, setTitulo)}
-                    disabled={improvingField === 'Título' || !titulo.trim()}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    {improvingField === 'Título' ? 'Melhorando...' : 'Melhorar Texto com IA'}
-                  </button>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Título da Ação *
+                </label>
                 <input
                   type="text"
                   value={titulo}
@@ -487,20 +406,9 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
           {activeTab === 'planejamento' && (
             <div className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    Objetivo Geral da Ação *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleImproveText('Objetivo', objetivo, setObjetivo)}
-                    disabled={improvingField === 'Objetivo' || !objetivo.trim()}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    {improvingField === 'Objetivo' ? 'Melhorando...' : 'Melhorar Texto'}
-                  </button>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Objetivo Geral da Ação *
+                </label>
                 <textarea
                   value={objetivo}
                   onChange={e => setObjetivo(e.target.value)}
@@ -510,20 +418,9 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    Descrição Detalhada & Escopo
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleImproveText('Descrição', descricao, setDescricao)}
-                    disabled={improvingField === 'Descrição' || !descricao.trim()}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    {improvingField === 'Descrição' ? 'Melhorando...' : 'Melhorar Texto'}
-                  </button>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Descrição Detalhada & Escopo
+                </label>
                 <textarea
                   value={descricao}
                   onChange={e => setDescricao(e.target.value)}
@@ -533,20 +430,9 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 uppercase">
-                    Justificativa Institucional
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleImproveText('Justificativa', justificativa, setJustificativa)}
-                    disabled={improvingField === 'Justificativa' || !justificativa.trim()}
-                    className="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    {improvingField === 'Justificativa' ? 'Melhorando...' : 'Melhorar Texto'}
-                  </button>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Justificativa Institucional
+                </label>
                 <textarea
                   value={justificativa}
                   onChange={e => setJustificativa(e.target.value)}
@@ -969,19 +855,6 @@ export const ActionFormModal: React.FC<ActionFormModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* AI Modals */}
-      <AISuggestModal
-        isOpen={showSuggestAI}
-        onClose={() => setShowSuggestAI(false)}
-        onApply={handleApplyAISuggestion}
-      />
-
-      <AIAnalyzeModal
-        isOpen={showAnalyzeAI}
-        onClose={() => setShowAnalyzeAI(false)}
-        actionData={assemblePayload()}
-      />
     </div>
   );
 };

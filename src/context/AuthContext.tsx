@@ -5,16 +5,23 @@ import { auth, loginWithGoogle as firebaseGoogleLogin, logoutFirebase } from '..
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { firestoreService } from '../lib/firestore-service';
 
+export const ADMIN_EMAILS = [
+  'fernando.lima@ifma.edu.br',
+  'francinaldo.lima@ifma.edu.br'
+];
+
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   usersList: User[];
   loading: boolean;
   login: (email: string, password?: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (onAuthorized?: (info: { isChefia: boolean; isAdmin: boolean; chefiaNome?: string }) => void) => Promise<void>;
   logout: () => void;
   switchUser: (targetUser: User) => void;
   canAdmin: boolean;
+  isInstitutionalAdmin: boolean;
+  isSectorChief: boolean;
   canApprove: boolean;
   canConsolidate: boolean;
   canCreateAction: boolean;
@@ -54,36 +61,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
       if (fbUser && fbUser.email) {
-        // Find existing user or bind to admin if email matches user
-        const users = await api.getUsers();
-        let matched = users.find(u => u.email.toLowerCase() === fbUser.email?.toLowerCase());
-        if (!matched && fbUser.email === 'francinaldo.lima@ifma.edu.br') {
-          matched = {
-            id: 'usr-admin',
-            nome: fbUser.displayName || 'Francinaldo Lima (Admin)',
-            email: fbUser.email,
-            role: 'ADMIN',
-            ativo: true,
-            created_at: new Date().toISOString()
-          };
-        } else if (!matched) {
-          matched = {
-            id: `usr-${fbUser.uid.substring(0, 10)}`,
-            nome: fbUser.displayName || fbUser.email.split('@')[0],
-            email: fbUser.email,
-            role: fbUser.email.includes('ifma.edu.br') ? 'GESTOR_SETOR' : 'CONSULTA',
-            ativo: true,
-            created_at: new Date().toISOString()
-          };
-        }
-        if (matched) {
-          setUser(matched);
-          setApiUserId(matched.id);
-          try {
-            await firestoreService.syncUser(matched);
-          } catch (e) {
-            console.warn('Could not sync user to firestore:', e);
+        try {
+          const access = await api.checkAccess(fbUser.email);
+          if (access.allowed && access.user) {
+            setUser(access.user);
+            setApiUserId(access.user.id);
+            localStorage.setItem('paa_user_id', access.user.id);
+            try {
+              await firestoreService.syncUser(access.user);
+            } catch (e) {
+              console.warn('Could not sync user to firestore:', e);
+            }
+          } else if (!access.allowed) {
+            // Not allowed sector chief or admin
+            console.warn('Acesso negado para o email:', fbUser.email);
           }
+        } catch (err) {
+          console.error('Erro na validação de acesso institucional:', err);
         }
       }
     });
@@ -95,27 +89,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await api.login(email, password);
     setUser(res.user);
     setApiUserId(res.user.id);
+    localStorage.setItem('paa_user_id', res.user.id);
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (onAuthorized?: (info: { isChefia: boolean; isAdmin: boolean; chefiaNome?: string }) => void) => {
     const fbUser = await firebaseGoogleLogin();
-    if (fbUser && fbUser.email) {
-      const users = await api.getUsers();
-      let matched = users.find(u => u.email.toLowerCase() === fbUser.email?.toLowerCase());
-      if (!matched && fbUser.email === 'francinaldo.lima@ifma.edu.br') {
-        matched = {
-          id: 'usr-admin',
-          nome: fbUser.displayName || 'Francinaldo Lima (Admin)',
-          email: fbUser.email,
-          role: 'ADMIN',
-          ativo: true,
-          created_at: new Date().toISOString()
-        };
-      }
-      if (matched) {
-        setUser(matched);
-        setApiUserId(matched.id);
-      }
+    if (!fbUser || !fbUser.email) {
+      throw new Error('Falha ao autenticar com a conta Google institucional.');
+    }
+
+    // Validate if the user is a sector chief or institutional admin
+    const access = await api.checkAccess(fbUser.email);
+    if (!access.allowed || !access.user) {
+      await logoutFirebase().catch(() => {});
+      throw new Error(
+        access.message ||
+        'Acesso restrito: Somente servidores em Chefia de Setor ou os Administradores Institucionais autorizados (Fernando Lima e Francinaldo Lima) podem efetuar login.'
+      );
+    }
+
+    // Set authorized user
+    setUser(access.user);
+    setApiUserId(access.user.id);
+    localStorage.setItem('paa_user_id', access.user.id);
+
+    try {
+      await firestoreService.syncUser(access.user);
+    } catch (e) {
+      console.warn('Could not sync user to firestore:', e);
+    }
+
+    if (onAuthorized) {
+      onAuthorized({
+        isChefia: access.isChefia,
+        isAdmin: access.isAdmin,
+        chefiaNome: access.chefiaNome
+      });
     }
   };
 
@@ -128,12 +137,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const switchUser = (targetUser: User) => {
     setUser(targetUser);
     setApiUserId(targetUser.id);
+    localStorage.setItem('paa_user_id', targetUser.id);
   };
 
-  const canAdmin = user?.role === 'ADMIN';
-  const canApprove = user?.role === 'ADMIN' || user?.role === 'VALIDADOR';
-  const canConsolidate = user?.role === 'ADMIN';
-  const canCreateAction = user?.role === 'ADMIN' || user?.role === 'GESTOR_SETOR' || user?.role === 'RESPONSAVEL_ACAO';
+  const isInstitutionalAdmin = !!user && ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
+  const canAdmin = isInstitutionalAdmin;
+  const isSectorChief = !!user && (user.role === 'GESTOR_SETOR' || user.role === 'ADMIN' || isInstitutionalAdmin);
+  const canApprove = canAdmin || user?.role === 'VALIDADOR';
+  const canConsolidate = canAdmin;
+  const canCreateAction = isSectorChief || user?.role === 'RESPONSAVEL_ACAO';
 
   const canEditAction = (action: Action): boolean => {
     if (!user) return false;
@@ -177,6 +189,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         switchUser,
         canAdmin,
+        isInstitutionalAdmin,
+        isSectorChief,
         canApprove,
         canConsolidate,
         canCreateAction,

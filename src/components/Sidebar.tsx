@@ -19,7 +19,10 @@ import {
   Settings,
   Info,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Briefcase,
+  GraduationCap,
+  UserCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -56,13 +59,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   issuesCount = 0,
   isOpen = true
 }) => {
-  const { user, canAdmin, canApprove } = useAuth();
+  const { user, canAdmin, canApprove, isInstitutionalAdmin } = useAuth();
 
   const groups: NavGroup[] = [
     {
       title: 'VISÃO GERAL',
       items: [
         { id: 'dashboard', label: 'Painel Geral', icon: LayoutDashboard }
+      ]
+    },
+    {
+      title: 'ESTRUTURA & PESSOAL',
+      items: [
+        { id: 'ano-exercicio', label: 'Ano do Exercício', icon: CalendarDays },
+        { id: 'equipe-gestao', label: 'Equipe de Gestão', icon: Briefcase },
+        { id: 'corpo-docente', label: 'Corpo Docente', icon: GraduationCap },
+        { id: 'tecnicos-administrativos', label: 'Técnicos Administrativos', icon: UserCheck }
       ]
     },
     {
@@ -105,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'setores', label: 'Setores do Campus', icon: Network, hide: !canAdmin },
         { id: 'eixos', label: 'Eixos Estratégicos', icon: Compass, hide: !canAdmin },
-        { id: 'usuarios', label: 'Usuários e Perfis', icon: Users, hide: !canAdmin },
+        { id: 'usuarios', label: 'Usuários e Perfis Institucionais', icon: Users, hide: !isInstitutionalAdmin },
         { id: 'auditoria', label: 'Trilha de Auditoria', icon: History, hide: !canAdmin },
         { id: 'configuracoes', label: 'Configurações', icon: Settings, hide: !canAdmin },
         { id: 'sobre', label: 'Sobre o Sistema', icon: Info }

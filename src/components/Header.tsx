@@ -8,7 +8,6 @@ import {
   LogOut,
   Building2,
   Calendar,
-  Sparkles,
   RefreshCw,
   ExternalLink,
   Flame
@@ -24,7 +23,6 @@ interface HeaderProps {
   paaList?: PAA[];
   onOpenNewAction?: () => void;
   onNavigate?: (route: string) => void;
-  onOpenAI?: () => void;
   toggleSidebar?: () => void;
 }
 
@@ -35,7 +33,6 @@ export const Header: React.FC<HeaderProps> = ({
   paaList = [],
   onOpenNewAction,
   onNavigate,
-  onOpenAI,
   toggleSidebar
 }) => {
   const activePAA = currentPAA || paa || null;

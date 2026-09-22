@@ -23,7 +23,12 @@ import {
 import { ActionFormModal } from './components/ActionFormModal';
 import { ActionDetailModal } from './components/ActionDetailModal';
 import { ApprovalModal } from './components/ApprovalModal';
-import { ActionModalAI } from './components/ActionModalAI';
+import {
+  AnoExercicioView,
+  EquipeGestaoView,
+  CorpoDocenteView,
+  TecnicosAdministrativosView
+} from './views/InstitutionalStructureViews';
 import { Action, Axis, DashboardStats, InstitutionSettings, PAA, Sector, User, ActionTemplate } from './types';
 import { api } from './lib/api';
 
@@ -55,8 +60,6 @@ const AppContent: React.FC = () => {
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<Action | null>(null);
   const [isApprovalMode, setIsApprovalMode] = useState(true);
-
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
   // Fetch all initial data
   const loadData = useCallback(async () => {
@@ -236,7 +239,6 @@ const AppContent: React.FC = () => {
       <Header
         paa={currentPaa}
         onOpenNewAction={handleOpenNewAction}
-        onOpenAI={() => setIsAIModalOpen(true)}
         toggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -268,6 +270,27 @@ const AppContent: React.FC = () => {
                     onNavigate={setCurrentRoute}
                     onOpenNewAction={handleOpenNewAction}
                   />
+                )}
+
+                {currentRoute === 'ano-exercicio' && (
+                  <AnoExercicioView
+                    paaList={paas}
+                    currentPaa={currentPaa}
+                    onSelectPaa={setCurrentPaa}
+                    onRefresh={loadData}
+                  />
+                )}
+
+                {currentRoute === 'equipe-gestao' && (
+                  <EquipeGestaoView sectors={sectors} />
+                )}
+
+                {currentRoute === 'corpo-docente' && (
+                  <CorpoDocenteView sectors={sectors} />
+                )}
+
+                {currentRoute === 'tecnicos-administrativos' && (
+                  <TecnicosAdministrativosView sectors={sectors} />
                 )}
 
                 {currentRoute === 'acoes' && (
@@ -420,17 +443,6 @@ const AppContent: React.FC = () => {
         action={approvalAction}
         isApproval={isApprovalMode}
         onSuccess={loadData}
-      />
-
-      {/* Global AI Assistant Modal */}
-      <ActionModalAI
-        isOpen={isAIModalOpen}
-        onClose={() => setIsAIModalOpen(false)}
-        actionTitle="Plano de Ação Anual 2027"
-        currentText=""
-        onApplyText={suggested => {
-          alert('Sugestão copiada. Você pode utilizá-la ao criar ou editar uma ação.');
-        }}
       />
     </div>
   );

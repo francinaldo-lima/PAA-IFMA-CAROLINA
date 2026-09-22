@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Target,
   CheckCircle2,
@@ -10,10 +10,18 @@ import {
   TrendingUp,
   Percent,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  ShieldCheck,
+  Building,
+  LogIn,
+  LogOut,
+  Sparkles,
+  ArrowRight,
+  UserCheck
 } from 'lucide-react';
 import { DashboardStats, PAA } from '../types';
 import { DashboardCharts } from '../components/DashboardCharts';
+import { useAuth } from '../context/AuthContext';
 
 interface DashboardViewProps {
   stats: DashboardStats | null;
@@ -28,6 +36,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenNewAction
 }) => {
+  const { user, isSectorChief, isInstitutionalAdmin, loginWithGoogle, logout } = useAuth();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleChefiaLogin = async () => {
+    setLoginError(null);
+    setIsLoggingIn(true);
+    try {
+      await loginWithGoogle((info) => {
+        // Redireciona diretamente para o cadastro e ação conforme solicitado pelo usuário
+        onOpenNewAction();
+      });
+    } catch (err: any) {
+      setLoginError(err.message || 'Falha ao autenticar com a conta Google institucional.');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   if (!stats) {
     return (
       <div className="p-8 text-center text-slate-500">
@@ -38,6 +65,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Institutional Chefia Access Banner / Gate */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5">
+        {user && (isSectorChief || isInstitutionalAdmin) ? (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-900">{user.nome}</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    {isInstitutionalAdmin ? 'Administrador Institucional' : 'Chefia de Setor Autorizada'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  E-mail institucional autenticado: <strong className="font-mono text-slate-700">{user.email}</strong> • Acesso liberado para cadastro e tramitação de ações.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={onOpenNewAction}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0f5132] hover:bg-[#137547] text-white text-xs font-bold rounded-lg shadow-xs transition-colors"
+              >
+                <span>+ Cadastrar Nova Ação</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider">
+                  Acesso Institucional Restrito
+                </span>
+                <span className="text-xs font-bold text-slate-800">Chefias de Setores • IFMA Campus Carolina</span>
+              </div>
+              <p className="text-xs text-slate-600 max-w-2xl leading-relaxed">
+                Somente os servidores legalmente designados para <strong>chefias de setores</strong> (Diretorias, Departamentos e Coordenações) podem efetuar login institucional com o Google para cadastrar e gerenciar as ações do PAA.
+              </p>
+              {loginError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 font-medium">
+                  {loginError}
+                </div>
+              )}
+            </div>
+
+            <div className="shrink-0">
+              <button
+                onClick={handleChefiaLogin}
+                disabled={isLoggingIn}
+                className="flex items-center gap-2 px-4 py-2.5 bg-[#0f5132] hover:bg-[#137547] text-white text-xs font-bold rounded-lg shadow-xs transition-colors disabled:opacity-50"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{isLoggingIn ? 'Validando Chefia...' : 'Entrar com Google Institucional'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Top Banner with PAA Information */}
       <div className="bg-gradient-to-r from-[#0f5132] to-[#137547] rounded-xl p-5 text-white shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

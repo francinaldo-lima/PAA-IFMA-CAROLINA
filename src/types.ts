@@ -33,6 +33,53 @@ export type ExecutionStatus =
   | 'PARCIALMENTE_EXECUTADA'
   | 'CANCELADA';
 
+export interface ManagementMember {
+  id: string;
+  nome: string;
+  cargo_funcao: string;
+  codigo_funcao?: string; // ex: CD-02, CD-03, FG-01, FG-02, FUC
+  email: string;
+  matricula_siape?: string;
+  portaria_designacao?: string;
+  setor_id?: string;
+  ordem: number;
+  ativo: boolean;
+  created_at: string;
+}
+
+export interface FacultyMember {
+  id: string;
+  nome: string;
+  matricula_siape: string;
+  email: string;
+  titulacao: 'Graduado' | 'Especialista' | 'Mestre' | 'Doutor' | 'Pós-Doutor';
+  area_disciplina: string;
+  regime_trabalho: '20h' | '40h' | '40h DE' | 'Substituto';
+  setor_lotacao_id?: string;
+  e_chefia_setor: boolean;
+  funcao_chefia?: string;
+  codigo_funcao_chefia?: string;
+  setor_chefia_id?: string;
+  ativo: boolean;
+  created_at: string;
+}
+
+export interface StaffMember {
+  id: string;
+  nome: string;
+  matricula_siape: string;
+  email: string;
+  cargo_efetivo: string;
+  nivel_classificacao: 'C' | 'D' | 'E';
+  setor_lotacao_id?: string;
+  e_chefia_setor: boolean;
+  funcao_chefia?: string;
+  codigo_funcao_chefia?: string;
+  setor_chefia_id?: string;
+  ativo: boolean;
+  created_at: string;
+}
+
 export interface User {
   id: string;
   nome: string;

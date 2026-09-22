@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Axis, Sector, User, AuditLog, InstitutionSettings, ActionTemplate } from '../types';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 // --- SECTORS VIEW ---
 export const SectorsView: React.FC<{
@@ -255,10 +256,38 @@ export const UsersView: React.FC<{
   sectors: Sector[];
   onRefresh: () => void;
 }> = ({ users, sectors, onRefresh }) => {
+  const { isInstitutionalAdmin, user } = useAuth();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<any>('RESPONSAVEL_ACAO');
   const [sectorId, setSectorId] = useState(sectors[0]?.id || '');
+
+  if (!isInstitutionalAdmin) {
+    return (
+      <div className="bg-white p-8 rounded-xl border border-rose-200 shadow-xs max-w-2xl mx-auto my-8 text-center space-y-4">
+        <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center mx-auto">
+          <Shield className="w-6 h-6" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900">Acesso Restrito ao Módulo de Usuários e Perfis</h2>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Conforme regra de segurança institucional do IFMA Campus Carolina, a gestão de <strong>Usuários e Perfis Institucionais</strong> é restrita exclusivamente aos administradores do sistema:
+        </p>
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 space-y-1.5 text-left max-w-md mx-auto">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+            <span>Fernando Lima — <code className="font-mono text-emerald-800">fernando.lima@ifma.edu.br</code></span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+            <span>Francinaldo Lima — <code className="font-mono text-emerald-800">francinaldo.lima@ifma.edu.br</code></span>
+          </div>
+        </div>
+        <p className="text-[11px] text-slate-400">
+          Usuário conectado atualmente: <strong>{user?.email || 'Não autenticado'}</strong>
+        </p>
+      </div>
+    );
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
