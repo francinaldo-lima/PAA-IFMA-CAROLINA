@@ -14,6 +14,7 @@ export const ADMIN_EMAILS = [
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
+  isGoogleAuthenticated: boolean;
   usersList: User[];
   loading: boolean;
   login: (email: string, password?: string) => Promise<void>;
@@ -185,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
+    setFirebaseUser(null);
     logoutFirebase().catch(console.error);
     localStorage.removeItem('paa_user_id');
   };
@@ -237,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         firebaseUser,
+        isGoogleAuthenticated: !!firebaseUser,
         usersList,
         loading,
         login,

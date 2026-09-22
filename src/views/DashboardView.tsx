@@ -19,12 +19,14 @@ import {
   ArrowRight,
   UserCheck,
   KeyRound,
-  Users
+  Users,
+  ExternalLink
 } from 'lucide-react';
 import { DashboardStats, PAA } from '../types';
 import { DashboardCharts } from '../components/DashboardCharts';
 import { useAuth } from '../context/AuthContext';
 import { FacilitatedLoginModal } from '../components/FacilitatedLoginModal';
+import { GoogleIcon } from '../components/GoogleIcon';
 
 interface DashboardViewProps {
   stats: DashboardStats | null;
@@ -39,7 +41,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenNewAction
 }) => {
-  const { user, isSectorChief, isInstitutionalAdmin, loginDirectly, loginWithGoogle, logout } = useAuth();
+  const { user, firebaseUser, isGoogleAuthenticated, isSectorChief, isInstitutionalAdmin, loginDirectly, loginWithGoogle, logout } = useAuth();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -90,22 +92,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-bold text-slate-900">{user.nome}</span>
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                     {isInstitutionalAdmin ? 'Administrador Institucional' : 'Chefia de Setor Autorizada'}
                   </span>
+                  {firebaseUser && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                      <GoogleIcon className="w-3 h-3" />
+                      <span>Google: {firebaseUser.email}</span>
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  E-mail institucional autenticado: <strong className="font-mono text-slate-700">{user.email}</strong> • Acesso liberado para cadastro e tramitação de ações.
+                  E-mail institucional: <strong className="font-mono text-slate-700">{firebaseUser?.email || user.email}</strong> • Acesso liberado para cadastro e tramitação de ações.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              {!firebaseUser && (
+                <button
+                  onClick={handleChefiaLogin}
+                  disabled={isLoggingIn}
+                  className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-400 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
+                  title="Conectar sua conta institucional oficial do Google"
+                >
+                  <GoogleIcon className="w-3.5 h-3.5" />
+                  <span>{isLoggingIn ? 'Conectando...' : 'Entrar com Conta Google'}</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-2xs"
+                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
                 title="Trocar de servidor ou entrar como outra chefia"
               >
                 <UserCheck className="w-3.5 h-3.5 text-slate-600" />
@@ -114,7 +134,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <button
                 onClick={onOpenNewAction}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0f5132] hover:bg-[#137547] text-white text-xs font-bold rounded-lg shadow-xs transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#0f5132] hover:bg-[#137547] text-white text-xs font-bold rounded-lg shadow-xs transition-colors cursor-pointer"
               >
                 <span>+ Cadastrar Nova Ação</span>
               </button>
@@ -125,19 +145,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 uppercase tracking-wider">
-                    Acesso Institucional
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-300 uppercase tracking-wider">
+                    Autenticação Google
                   </span>
-                  <span className="text-xs font-bold text-slate-800">Chefias de Setores & Administradores • IFMA Campus Carolina</span>
+                  <span className="text-xs font-bold text-slate-800">Acesso Oficial Institucional • IFMA Campus Carolina</span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
-                  Para cadastrar e gerenciar ações no PAA 2027, selecione sua identificação abaixo. Não é necessário senha ou pop-up.
+                  Efetue login com sua conta do Google institucional (<strong>@ifma.edu.br</strong>) para autenticação oficial e gestão das ações do PAA.
                 </p>
               </div>
 
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="self-start sm:self-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition-colors flex items-center gap-1.5 shrink-0"
+                className="self-start sm:self-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-300 transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
               >
                 <Users className="w-3.5 h-3.5 text-slate-600" />
                 <span>Todas as Chefias ({10})</span>
@@ -145,78 +165,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {loginError && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 font-medium flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{loginError}</span>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 font-medium flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+                <a
+                  href={typeof window !== 'undefined' ? window.location.href : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-emerald-800 hover:text-emerald-950 font-bold underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Abrir em Nova Aba</span>
+                </a>
               </div>
             )}
 
-            {/* Quick 1-click access buttons */}
+            {/* Quick access buttons with Google in prominence */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <button
-                onClick={() => handleDirectLogin('francinaldo.lima@ifma.edu.br')}
-                disabled={isLoggingIn}
-                className="p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/60 hover:bg-emerald-100/80 transition-all text-left group flex items-center justify-between gap-2 shadow-xs"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-                    <span className="text-xs font-bold text-emerald-950 group-hover:text-emerald-800">
-                      Francinaldo Lima
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-emerald-800 font-medium truncate">
-                    Administrador Institucional
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono">
-                    francinaldo.lima@ifma.edu.br
-                  </div>
-                </div>
-                <div className="px-2.5 py-1 bg-[#0f5132] text-white text-[11px] font-bold rounded-md group-hover:bg-[#137547] shrink-0">
-                  Entrar ⚡
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleDirectLogin('fernando.lima@ifma.edu.br')}
-                disabled={isLoggingIn}
-                className="p-3 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 transition-all text-left group flex items-center justify-between gap-2 shadow-xs"
-              >
-                <div className="min-w-0">
-                  <span className="text-xs font-bold text-slate-900 group-hover:text-slate-700">
-                    Fernando Silva Lima
-                  </span>
-                  <div className="text-[10px] text-slate-600 font-medium truncate">
-                    Diretor Geral • Campus Carolina
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-mono">
-                    fernando.lima@ifma.edu.br
-                  </div>
-                </div>
-                <div className="px-2.5 py-1 bg-slate-800 text-white text-[11px] font-bold rounded-md group-hover:bg-slate-700 shrink-0">
-                  Entrar ⚡
-                </div>
-              </button>
-
               <button
                 onClick={handleChefiaLogin}
                 disabled={isLoggingIn}
-                className="p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all text-left group flex items-center justify-between gap-2 shadow-xs"
+                className="sm:col-span-2 p-3.5 rounded-xl border-2 border-blue-500 bg-blue-50/60 hover:bg-blue-100/80 transition-all text-left group flex items-center justify-between gap-3 shadow-xs cursor-pointer"
               >
-                <div className="min-w-0">
-                  <span className="text-xs font-bold text-slate-800 group-hover:text-slate-900 flex items-center gap-1">
-                    <LogIn className="w-3.5 h-3.5 text-slate-500" />
-                    Google Institucional
-                  </span>
-                  <div className="text-[10px] text-slate-500 font-medium truncate">
-                    Firebase Auth OAuth Pop-up
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs">
+                    <GoogleIcon className="w-5 h-5" />
                   </div>
-                  <div className="text-[9px] text-slate-400 font-mono">
-                    @ifma.edu.br
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 group-hover:text-blue-900">
+                      {isLoggingIn ? 'Conectando ao Google...' : 'Efetuar Login pela Conta do Google'}
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Selecione sua conta institucional <strong className="font-semibold text-slate-800">@ifma.edu.br</strong>
+                    </div>
                   </div>
                 </div>
-                <div className="px-2 py-1 bg-slate-100 text-slate-700 text-[11px] font-bold rounded-md group-hover:bg-slate-200 shrink-0">
-                  {isLoggingIn ? '...' : 'Conectar'}
+                <div className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shrink-0 shadow-2xs">
+                  Entrar com Google
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleDirectLogin('francinaldo.lima@ifma.edu.br')}
+                disabled={isLoggingIn}
+                className="p-3.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all text-left group flex items-center justify-between gap-2 shadow-xs cursor-pointer"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                    <span className="text-xs font-bold text-slate-900 truncate">
+                      Francinaldo Lima
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium truncate">
+                    Acesso Direto Institucional
+                  </div>
+                </div>
+                <div className="px-2 py-1 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-md shrink-0">
+                  1-Clique
                 </div>
               </button>
             </div>

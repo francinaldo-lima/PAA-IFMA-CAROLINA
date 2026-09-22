@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import { Notification, PAA } from '../types';
 import { api } from '../lib/api';
 import { FacilitatedLoginModal } from './FacilitatedLoginModal';
+import { GoogleIcon } from './GoogleIcon';
 
 interface HeaderProps {
   currentPAA?: PAA | null;
@@ -51,8 +52,9 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       setIsConnectingGoogle(true);
       await loginWithGoogle();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Falha ao autenticar com Firebase Google:', err);
+      setShowLoginModal(true);
     } finally {
       setIsConnectingGoogle(false);
     }
@@ -167,16 +169,38 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right tools: New Action, Notifications, Role Switcher */}
+        {/* Right tools: Google Login, Quick Action, Notifications, Role Switcher */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Quick 1-Click Login Button */}
+          {/* Google Login Status or Direct Trigger */}
+          {firebaseUser ? (
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 text-emerald-950 border border-emerald-300 rounded-lg text-xs font-semibold shadow-2xs"
+              title={`Autenticado no Google: ${firebaseUser.email}`}
+            >
+              <GoogleIcon className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xl:inline max-w-[150px] truncate">{firebaseUser.email}</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0 animate-pulse" />
+            </div>
+          ) : (
+            <button
+              onClick={handleGoogleConnect}
+              disabled={isConnectingGoogle}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-400 text-xs font-bold rounded-lg shadow-2xs transition-all cursor-pointer"
+              title="Efetuar login com a conta do Google (@ifma.edu.br)"
+            >
+              <GoogleIcon className="w-3.5 h-3.5 shrink-0" />
+              <span>{isConnectingGoogle ? 'Conectando...' : 'Entrar com Google'}</span>
+            </button>
+          )}
+
+          {/* Quick Chefias Button */}
           <button
             onClick={() => setShowLoginModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#0f5132] border border-emerald-300 text-xs font-bold rounded-md shadow-2xs transition-colors"
-            title="Acesso Facilitado Institucional (1-Clique)"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+            title="Ver todas as opções de acesso e chefias de setor"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-            <span className="hidden sm:inline">Identificar / Login</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span className="hidden md:inline">Outras Chefias</span>
           </button>
 
           {/* Quick Action Button */}

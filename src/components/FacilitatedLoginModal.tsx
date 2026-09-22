@@ -13,9 +13,11 @@ import {
   Sparkles,
   Search,
   ExternalLink,
-  Flame
+  Flame,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { GoogleIcon } from './GoogleIcon';
 
 interface FacilitatedLoginModalProps {
   isOpen: boolean;
@@ -28,8 +30,8 @@ export const FacilitatedLoginModal: React.FC<FacilitatedLoginModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const { user, loginDirectly, loginWithGoogle } = useAuth();
-  const [activeTab, setActiveTab] = useState<'rapido' | 'email' | 'google'>('rapido');
+  const { user, firebaseUser, isGoogleAuthenticated, loginDirectly, loginWithGoogle, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<'google' | 'rapido' | 'email'>('google');
   const [customEmail, setCustomEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +226,18 @@ export const FacilitatedLoginModal: React.FC<FacilitatedLoginModalProps> = ({
         {/* Tabs */}
         <div className="flex border-b border-slate-200 px-5 pt-3 gap-2 bg-slate-50 shrink-0">
           <button
+            onClick={() => { setActiveTab('google'); setError(null); }}
+            className={`flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
+              activeTab === 'google'
+                ? 'border-[#0f5132] text-[#0f5132]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <GoogleIcon className="w-3.5 h-3.5" />
+            <span>Login com Conta Google</span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab('rapido'); setError(null); }}
             className={`flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
               activeTab === 'rapido'
@@ -232,7 +246,7 @@ export const FacilitatedLoginModal: React.FC<FacilitatedLoginModalProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Acesso Rápido 1-Clique (Recomendado)</span>
+            <span>Acesso 1-Clique</span>
           </button>
 
           <button
@@ -244,19 +258,7 @@ export const FacilitatedLoginModal: React.FC<FacilitatedLoginModalProps> = ({
             }`}
           >
             <Mail className="w-3.5 h-3.5" />
-            <span>Digitar E-mail Institucional</span>
-          </button>
-
-          <button
-            onClick={() => { setActiveTab('google'); setError(null); }}
-            className={`flex items-center gap-1.5 pb-2.5 px-3 text-xs font-bold border-b-2 transition-colors ${
-              activeTab === 'google'
-                ? 'border-[#0f5132] text-[#0f5132]'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Flame className="w-3.5 h-3.5 text-amber-500" />
-            <span>Google Institucional</span>
+            <span>Digitar E-mail</span>
           </button>
         </div>
 
@@ -470,32 +472,104 @@ export const FacilitatedLoginModal: React.FC<FacilitatedLoginModalProps> = ({
 
           {activeTab === 'google' && (
             <div className="space-y-4 max-w-lg mx-auto py-2 text-center">
-              <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
-                <Flame className="w-5 h-5 text-amber-600 fill-amber-500" />
-              </div>
+              {firebaseUser ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-left space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <GoogleIcon className="w-5 h-5" />
+                      <span className="text-xs font-bold text-emerald-950">Conta Google Autenticada</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 border border-emerald-300">
+                      Conectado
+                    </span>
+                  </div>
 
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Autenticação Google Institucional (Firebase)
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto leading-relaxed">
-                  Utilize sua conta institucional do Google Workspace (<code className="text-slate-700">@ifma.edu.br</code>).
-                </p>
-              </div>
+                  <div className="text-xs text-slate-700 space-y-1">
+                    <div>
+                      <span className="text-slate-500 text-[11px] block">E-mail:</span>
+                      <strong className="font-mono text-slate-900 text-xs">{firebaseUser.email}</strong>
+                    </div>
+                    {firebaseUser.displayName && (
+                      <div>
+                        <span className="text-slate-500 text-[11px] block">Nome:</span>
+                        <span className="font-semibold text-slate-800">{firebaseUser.displayName}</span>
+                      </div>
+                    )}
+                  </div>
 
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-900 leading-relaxed">
-                <strong className="block font-bold mb-1">Nota sobre Bloqueio de Pop-up:</strong>
-                Se você estiver visualizando a aplicação em um ambiente de pré-visualização (iFrame) ou com bloqueador de pop-ups ativo, o navegador pode impedir a abertura da janela do Google. Se isso acontecer, utilize a aba <strong>"Acesso Rápido 1-Clique"</strong> acima para entrar imediatamente.
-              </div>
+                  <div className="pt-2 border-t border-emerald-100 flex items-center justify-between gap-2">
+                    <button
+                      onClick={() => {
+                        logout();
+                        setError(null);
+                        setSuccessMessage('Sessão Google desconectada.');
+                      }}
+                      className="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors flex items-center gap-1.5"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Desconectar Conta Google</span>
+                    </button>
 
-              <button
-                onClick={handleGoogleSubmit}
-                disabled={loading}
-                className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg shadow-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-              >
-                <Flame className="w-4 h-4 text-amber-400" />
-                <span>{loading ? 'Conectando ao Google...' : 'Abrir Login com Google Institucional'}</span>
-              </button>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        if (onSuccess) onSuccess();
+                      }}
+                      className="px-4 py-1.5 bg-[#0f5132] hover:bg-[#137547] text-white text-xs font-bold rounded-lg transition-colors"
+                    >
+                      Continuar no Sistema
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center mx-auto shadow-2xs">
+                    <GoogleIcon className="w-6 h-6" />
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900">
+                      Entrar com a Conta do Google
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 max-w-md mx-auto leading-relaxed">
+                      Efetue login institucional com sua conta oficial <strong>@ifma.edu.br</strong> (Francinaldo Lima, Fernando Lima ou Chefias de Setor).
+                    </p>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={handleGoogleSubmit}
+                      disabled={loading}
+                      className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-800 border-2 border-slate-300 hover:border-slate-400 text-sm font-bold rounded-xl shadow-xs flex items-center justify-center gap-3 transition-all disabled:opacity-50"
+                    >
+                      <GoogleIcon className="w-5 h-5" />
+                      <span>{loading ? 'Abrindo autenticação Google...' : 'Fazer Login com Conta Google (@ifma.edu.br)'}</span>
+                    </button>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-left text-xs text-slate-600 space-y-1.5">
+                    <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <span>Autenticação Segura via Firebase & Google OAuth</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed">
+                      Ao clicar no botão, uma janela segura do Google será aberta para você escolher ou autorizar sua conta institucional.
+                    </p>
+                    <div className="pt-1 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500">Pop-up bloqueado no iFrame?</span>
+                      <a
+                        href={typeof window !== 'undefined' ? window.location.href : '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-emerald-700 hover:text-emerald-900 font-bold underline"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Abrir em Nova Aba</span>
+                      </a>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
