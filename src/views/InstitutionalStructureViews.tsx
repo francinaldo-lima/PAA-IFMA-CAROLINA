@@ -19,7 +19,9 @@ import {
   Lock,
   ArrowRight,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Pencil,
+  X
 } from 'lucide-react';
 import { PAA, ManagementMember, FacultyMember, StaffMember, Sector } from '../types';
 import { api } from '../lib/api';
