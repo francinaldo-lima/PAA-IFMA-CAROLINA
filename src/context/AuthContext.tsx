@@ -197,8 +197,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('paa_user_id', targetUser.id);
   };
 
-  const isInstitutionalAdmin = !!user && ADMIN_EMAILS.includes(user.email?.toLowerCase() || '');
-  const canAdmin = isInstitutionalAdmin;
+  const isInstitutionalAdmin = !!user && (ADMIN_EMAILS.includes(user.email?.toLowerCase() || '') || user.role === 'ADMIN');
+  const canAdmin = isInstitutionalAdmin || (!!user && user.role === 'ADMIN');
   const isSectorChief = !!user && (user.role === 'GESTOR_SETOR' || user.role === 'ADMIN' || isInstitutionalAdmin);
   const canApprove = canAdmin || user?.role === 'VALIDADOR';
   const canConsolidate = canAdmin;
