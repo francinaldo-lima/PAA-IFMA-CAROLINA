@@ -7,7 +7,8 @@ import { firestoreService } from '../lib/firestore-service';
 
 export const ADMIN_EMAILS = [
   'fernando.lima@ifma.edu.br',
-  'francinaldo.lima@ifma.edu.br'
+  'francinaldo.lima@ifma.edu.br',
+  'admin@ifma.edu.br'
 ];
 
 interface AuthContextType {
@@ -16,6 +17,14 @@ interface AuthContextType {
   usersList: User[];
   loading: boolean;
   login: (email: string, password?: string) => Promise<void>;
+  loginDirectly: (email: string) => Promise<{
+    allowed: boolean;
+    isAdmin: boolean;
+    isChefia: boolean;
+    user?: User;
+    chefiaNome?: string;
+    message?: string;
+  }>;
   loginWithGoogle: (onAuthorized?: (info: { isChefia: boolean; isAdmin: boolean; chefiaNome?: string }) => void) => Promise<void>;
   logout: () => void;
   switchUser: (targetUser: User) => void;
@@ -43,11 +52,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const users = await api.getUsers();
         setUsersList(users);
 
-        const savedId = localStorage.getItem('paa_user_id') || 'usr-admin';
-        const matched = users.find(u => u.id === savedId) || users[0] || null;
+        const savedId = localStorage.getItem('paa_user_id');
+        let matched: User | null = null;
+        if (savedId) {
+          matched = users.find(u => u.id === savedId) || null;
+        }
+        // Default to Francinaldo Lima (Institutional Administrator) or Fernando Lima
+        if (!matched) {
+          matched = users.find(u => u.email.toLowerCase() === 'francinaldo.lima@ifma.edu.br')
+            || users.find(u => u.email.toLowerCase() === 'fernando.lima@ifma.edu.br')
+            || users[0]
+            || null;
+        }
         if (matched) {
           setUser(matched);
           setApiUserId(matched.id);
+          localStorage.setItem('paa_user_id', matched.id);
         }
       } catch (err) {
         console.error('Erro ao inicializar autenticação:', err);
@@ -92,8 +112,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('paa_user_id', res.user.id);
   };
 
+  const loginDirectly = async (email: string) => {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const access = await api.checkAccess(cleanEmail);
+    if (!access.allowed || !access.user) {
+      throw new Error(
+        access.message ||
+        'Acesso restrito: O e-mail informado não consta como Chefia de Setor nem Administrador do Campus Carolina.'
+      );
+    }
+
+    setUser(access.user);
+    setApiUserId(access.user.id);
+    localStorage.setItem('paa_user_id', access.user.id);
+
+    try {
+      await firestoreService.syncUser(access.user);
+    } catch (e) {
+      console.warn('Could not sync user to firestore:', e);
+    }
+
+    return access;
+  };
+
   const loginWithGoogle = async (onAuthorized?: (info: { isChefia: boolean; isAdmin: boolean; chefiaNome?: string }) => void) => {
-    const fbUser = await firebaseGoogleLogin();
+    let fbUser;
+    try {
+      fbUser = await firebaseGoogleLogin();
+    } catch (err: any) {
+      const code = err?.code || '';
+      if (code === 'auth/popup-blocked') {
+        throw new Error('O pop-up de login foi bloqueado pelo navegador ou iFrame. Utilize o Acesso Rápido Institucional ou digite seu e-mail institucional.');
+      } else if (code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
+        throw new Error('Janela de login fechada antes da conclusão.');
+      }
+      throw new Error(err.message || 'Falha ao autenticar com a conta Google institucional.');
+    }
+
     if (!fbUser || !fbUser.email) {
       throw new Error('Falha ao autenticar com a conta Google institucional.');
     }
@@ -185,6 +240,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         usersList,
         loading,
         login,
+        loginDirectly,
         loginWithGoogle,
         logout,
         switchUser,

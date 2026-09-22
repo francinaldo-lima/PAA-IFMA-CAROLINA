@@ -10,11 +10,14 @@ import {
   Calendar,
   RefreshCw,
   ExternalLink,
-  Flame
+  Flame,
+  Sparkles,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Notification, PAA } from '../types';
 import { api } from '../lib/api';
+import { FacilitatedLoginModal } from './FacilitatedLoginModal';
 
 interface HeaderProps {
   currentPAA?: PAA | null;
@@ -41,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPaaDropdown, setShowPaaDropdown] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isConnectingGoogle, setIsConnectingGoogle] = useState(false);
 
   const handleGoogleConnect = async () => {
@@ -165,6 +169,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right tools: New Action, Notifications, Role Switcher */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Quick 1-Click Login Button */}
+          <button
+            onClick={() => setShowLoginModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#0f5132] border border-emerald-300 text-xs font-bold rounded-md shadow-2xs transition-colors"
+            title="Acesso Facilitado Institucional (1-Clique)"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+            <span className="hidden sm:inline">Identificar / Login</span>
+          </button>
+
           {/* Quick Action Button */}
           <button
             onClick={onOpenNewAction}
@@ -277,6 +291,25 @@ export const Header: React.FC<HeaderProps> = ({
                   </div>
                 </div>
 
+                {/* 1-Click Facilitated Login button */}
+                <div className="px-3 pt-2 pb-1">
+                  <button
+                    onClick={() => {
+                      setShowLoginModal(true);
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full text-left px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-950 text-xs font-bold rounded-lg border border-emerald-200 flex items-center justify-between transition-colors shadow-2xs"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                      Acesso Rápido 1-Clique
+                    </span>
+                    <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded font-mono">
+                      Fácil
+                    </span>
+                  </button>
+                </div>
+
                 {/* Role Switcher for instant Demo testing */}
                 <div className="px-3 py-2">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
@@ -352,6 +385,12 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Facilitated Institutional Login Modal */}
+      <FacilitatedLoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </header>
   );
 };
